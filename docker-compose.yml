@@ -1,24 +1,41 @@
+secrets:
+  DB_PASSWORD:
+    file: ./secrets/db_password.txt
+  SECRET_JWT:
+    file: ./secrets/secret_jwt.txt
+  PEPPER:
+    file: ./secrets/pepper.txt
+
 services:
   service-usuario:
     build: ./service-usuario
     ports:
-      - '3000:3000' #Por enquanto vai ter acesso público pra teste, e pq n temos o API Gateway pronto.
+      - '3002:3000' #Por enquanto vai ter acesso público pra teste, e pq n temos o API Gateway pronto.
     depends_on:
       - db-usuario
     volumes:
-      - ./service-usuario:/usr/src/app     # Meu código = Código no container
+      - ./service-usuario:/usr/src/app # Meu código = Código no container
       - /usr/src/app/node_modules # node_modules do container != meu node_modules
+    env_file:
+      - ./service-usuario/.env
+    secrets:
+      - DB_PASSWORD       
+      - SECRET_JWT
+      - PEPPER
 
   db-usuario:
     image: postgres:15
     environment:
       POSTGRES_DB: banco
-      POSTGRES_USER: usuario
-      POSTGRES_PASSWORD: senha
+      POSTGRES_USER: usuario      
+      POSTGRES_PASSWORD_FILE: /run/secrets/DB_PASSWORD
     volumes:
       - db-data:/var/lib/postgresql/data
-  
-  pgadmin: #Para poder editar os bancos - demora pra inicializar
+    secrets:
+      - DB_PASSWORD
+
+  pgadmin:
+    #Para poder editar os bancos - demora pra inicializar
     image: dpage/pgadmin4
     restart: unless-stopped
     environment:

@@ -1,3 +1,7 @@
 # Básicos
 */node_modules
 */.env
+
+#Secrets
+secrets/*
+!secrets/README.md

@@ -1,4 +1,3 @@
-import dotenv from 'dotenv/config';
 import path from 'path';
 
 import app from './app.js';
