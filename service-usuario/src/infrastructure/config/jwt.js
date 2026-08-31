@@ -1,5 +1,7 @@
+import getSecret from './secret-reader.js';
+
 const jwtConfig = {
-    secret: process.env.SECRET_JWT,
+    secret: getSecret('SECRET_JWT'),
     options: {
         expiresIn: "24h"
     }

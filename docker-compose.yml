@@ -10,7 +10,7 @@ services:
   service-usuario:
     build: ./service-usuario
     ports:
-      - '3002:3000' #Por enquanto vai ter acesso público pra teste, e pq n temos o API Gateway pronto.
+      - '3000:3000' #Por enquanto vai ter acesso público pra teste, e pq n temos o API Gateway pronto.
     depends_on:
       - db-usuario
     volumes:
