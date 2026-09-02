@@ -3,6 +3,6 @@ import criarService from "../service/session.service.js";
 import criarController from "../controller/session.controller.js";
 
 export const service = criarService(usuarioService);
-const controller = criarController(service);
+export const controller = criarController(service);
 
 export default controller;

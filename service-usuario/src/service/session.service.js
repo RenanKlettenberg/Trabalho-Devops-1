@@ -3,29 +3,23 @@ import bcrypt from 'bcrypt';
 import RESPONSE from "../shared/constants/response.js";
 import AppError from "../infrastructure/errors/app.error.js";
 import configJwt from '../infrastructure/config/jwt.js';
+import pepperConfig from '../infrastructure/config/pepper.js';
 
-function criarServiceSession(usuarioService, roleService) {
+function criarServiceSession(usuarioService) {
     async function login(dados) {
-        const usuario = (await usuarioService.getByEmail(dados.usu_email)).rows[0]
+        const usuario = (await usuarioService.getByEmail(dados.usu_email))
         if (usuario.rowCount == 0) {
             throw new AppError(RESPONSE.CREDENCIAIS_INVALIDAS);
         }
 
-        const SECRET = process.env.SECRET;
-        const senha = dados.usu_password + SECRET;
-        const senhaValida = await bcrypt.compare(senha, usuario.usu_password);
+        const senha = dados.usu_password + pepperConfig.secret;
+        const senhaValida = await bcrypt.compare(senha, usuario.rows[0].usu_password);
 
         if (!senhaValida) {
             throw new AppError(RESPONSE.CREDENCIAIS_INVALIDAS);
         }
 
-        const permissions = await roleService.getPermissions(usuario);
-        usuario.permissions = permissions;
-        return assinarToken(usuario);
-    }
-
-    async function logoff(dados) {
-        await clearPermissions(dados.usu_id);
+        return assinarToken(usuario.rows[0]);
     }
 
     function assinarToken(payload) {
@@ -34,12 +28,7 @@ function criarServiceSession(usuarioService, roleService) {
         return { ...payload, jwt: token };
     }
 
-    async function clearPermissions(usu_id) {
-        const key = `user:${usu_id}:permissions`;
-        await cacher.del(key);
-    }
-
-    return { login, logoff };
+    return { login };
 }
 
 export default criarServiceSession;

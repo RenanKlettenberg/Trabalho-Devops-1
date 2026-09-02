@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import AppError from "../infrastructure/errors/app.error.js";
 import RESPONSE from "../shared/constants/response.js";
 import configJwt from '../infrastructure/config/jwt.js';
+import pepperConfig from '../infrastructure/config/pepper.js';
 
 function criarServiceUsuario(repository) {
     async function listar(req, res) {
@@ -23,8 +24,7 @@ function criarServiceUsuario(repository) {
             throw new AppError(RESPONSE.USUARIO_JA_CADASTRADO);
         }
 
-        const SECRET = process.env.SECRET;
-        const hash = await bcrypt.hash(dados.usu_password + SECRET, 10)
+        const hash = await bcrypt.hash(dados.usu_password + pepperConfig.secret, 10)
         dados.usu_password = hash;
 
         const usuario = await repository.criarUsuario(dados);
