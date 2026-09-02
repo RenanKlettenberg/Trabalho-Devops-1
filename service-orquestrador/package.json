@@ -1,0 +1,11 @@
+{
+  "name": "service-orquestrador",
+  "version": "1.0.0",
+  "main": "Orquestrador.js",
+  "scripts": {
+    "start": "node Orquestrador.js"
+  },
+  "dependencies": {
+    "amqplib": "^2.0.1"
+  }
+}

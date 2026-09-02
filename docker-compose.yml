@@ -10,7 +10,7 @@ services:
   service-usuario:
     build: ./service-usuario
     ports:
-      - '3000:3000' #Por enquanto vai ter acesso público pra teste, e pq n temos o API Gateway pronto.
+      - '3000:3000' # Por enquanto vai ter acesso público pra teste, e pq n temos o API Gateway pronto.
     depends_on:
       - db-usuario
     volumes:
@@ -19,7 +19,7 @@ services:
     env_file:
       - ./service-usuario/.env
     secrets:
-      - DB_PASSWORD       
+      - DB_PASSWORD
       - SECRET_JWT
       - PEPPER
 
@@ -27,7 +27,7 @@ services:
     image: postgres:15
     environment:
       POSTGRES_DB: banco
-      POSTGRES_USER: usuario      
+      POSTGRES_USER: usuario
       POSTGRES_PASSWORD_FILE: /run/secrets/DB_PASSWORD
     volumes:
       - db-data:/var/lib/postgresql/data
@@ -35,7 +35,7 @@ services:
       - DB_PASSWORD
 
   pgadmin:
-    #Para poder editar os bancos - demora pra inicializar
+    # Para poder editar os bancos - demora pra inicializar
     image: dpage/pgadmin4
     restart: unless-stopped
     environment:
@@ -43,6 +43,16 @@ services:
       PGADMIN_DEFAULT_PASSWORD: 123456
     ports:
       - "5050:80"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-devops
+    ports:
+      - "5672:5672" # Porta padrão para os microsserviços conectarem
+      - "15672:15672" # Painel visual do RabbitMQ (acesse http://localhost:15672)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
 
 volumes:
   db-data:
