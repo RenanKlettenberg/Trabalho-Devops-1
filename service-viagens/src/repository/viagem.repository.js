@@ -10,18 +10,18 @@ function criarRepositoryViagem(database) {
     }
 
     async function criarViagem(params) {
-        const sql = "INSERT INTO viagem.viagens (usu_nome,usu_email,usu_password) VALUES ($1,$2,$3) RETURNING *";
-        return (await database.execute(sql, [params.usu_nome, params.usu_email, params.usu_password])).rows[0];
+        const sql = "INSERT INTO viagem.viagens (via_nome, via_data_ini, via_data_fim, gru_id) VALUES($1,$2,$3,$4) RETURNING *";
+        return (await database.execute(sql, [params.via_nome, params.via_data_ini, params.via_data_fim, params.gru_id])).rows[0];
     }
 
     async function editarViagem(params) {
-        const sql = "INSERT INTO viagem.viagens (usu_nome,usu_email,usu_password) VALUES ($1,$2,$3) RETURNING *";
-        return (await database.execute(sql, [params.usu_nome, params.usu_email, params.usu_password])).rows[0];
+        const sql = "UPDATE viagem.viagens SET via_nome = $1, via_data_ini = $2, via_data_fim = $3) WHERE via_id = $4";
+        return (await database.execute(sql, [params.via_nome, params.via_data_ini, params.via_data_fim, params.via_id]));
     }
 
     async function deleteViagem(params) {
-        const sql = "INSERT INTO viagem.viagens (usu_nome,usu_email,usu_password) VALUES ($1,$2,$3) RETURNING *";
-        return (await database.execute(sql, [params.usu_nome, params.usu_email, params.usu_password])).rows[0];
+        const sql = "DELETE FROM viagem.viagens WHERE via_id = $1";
+        return (await database.execute(sql, [params.via_id]));
     }
 
     return { listar, getById, criarViagem, editarViagem, deleteViagem };

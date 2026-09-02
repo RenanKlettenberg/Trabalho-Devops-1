@@ -19,16 +19,18 @@ services:
     env_file:
       - ./service-viagens/.env
     secrets:
-      - DB_PASSWORD      
+      - DB_PASSWORD
 
   db-viagens:
     image: postgres:15
+    ports:
+      - "5433:5432"
     environment:
       POSTGRES_DB: viagens_db
       POSTGRES_USER: usuario     
       POSTGRES_PASSWORD_FILE: /run/secrets/DB_PASSWORD
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - db-viagens-data:/var/lib/postgresql/data
     secrets:
       - DB_PASSWORD
 
@@ -81,3 +83,4 @@ services:
 
 volumes:
   db-data:
+  db-viagens-data:

@@ -11,7 +11,6 @@ describe("Criar viagem", () => {
         via_data_fim: "12-31-2113 13:13",
 
         usu_id: 1, //ID do usuário de teste
-        crn_id: 1,
         gru_id: 1,
     }
 
