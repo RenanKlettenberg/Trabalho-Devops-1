@@ -7,6 +7,31 @@ secrets:
     file: ./secrets/pepper.txt
 
 services:
+  service-viagens:
+    build: ./service-viagens
+    ports:
+      - '3001:3001' #Por enquanto vai ter acesso público pra teste, e pq n temos o API Gateway pronto.
+    depends_on:
+      - db-viagens
+    volumes:
+      - ./service-viagens:/usr/src/app # Meu código = Código no container
+      - /usr/src/app/node_modules # node_modules do container != meu node_modules
+    env_file:
+      - ./service-viagens/.env
+    secrets:
+      - DB_PASSWORD      
+
+  db-viagens:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: viagens_db
+      POSTGRES_USER: usuario     
+      POSTGRES_PASSWORD_FILE: /run/secrets/DB_PASSWORD
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    secrets:
+      - DB_PASSWORD
+
   service-usuario:
     build: ./service-usuario
     ports:
