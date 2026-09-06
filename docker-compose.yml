@@ -61,6 +61,36 @@ services:
     secrets:
       - DB_PASSWORD
 
+  service-grupos:
+    build: ./service-grupos
+    ports:
+      - '3002:3002' #Por enquanto vai ter acesso público pra teste, e pq n temos o API Gateway pronto.
+    depends_on:
+      - db-grupos
+      - rabbitmq
+    volumes:
+      - ./service-grupos:/usr/src/app # Meu código = Código no container
+      - /usr/src/app/node_modules # node_modules do container != meu node_modules
+    env_file:
+      - ./service-grupos/.env
+    secrets:
+      - DB_PASSWORD
+      - SECRET_JWT
+
+  db-grupos:
+    image: postgres:15
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: grupos_db
+      POSTGRES_USER: usuario
+      POSTGRES_PASSWORD_FILE: /run/secrets/DB_PASSWORD
+    volumes:
+      - db-grupos-data:/var/lib/postgresql/data
+    secrets:
+      - DB_PASSWORD
+
+
   pgadmin:
     # Para poder editar os bancos - demora pra inicializar
     image: dpage/pgadmin4
@@ -84,3 +114,4 @@ services:
 volumes:
   db-data:
   db-viagens-data:
+  db-grupos-data:
