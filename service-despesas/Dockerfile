@@ -1,10 +1,12 @@
-FROM node:24
+FROM node:24-alpine
 
 WORKDIR /usr/src/app
 
-COPY package*.json ./
+ENV NODE_ENV=development
 
-RUN npm install
+COPY package.json package-lock.json ./
+
+RUN npm ci
 
 COPY . .
 

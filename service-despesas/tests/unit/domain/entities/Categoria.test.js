@@ -2,9 +2,9 @@ import { Categoria } from '../../../../src/domain/entities/Categoria.js';
 
 describe('Entidade de Domínio: Categoria', () => {
   it('deve aceitar categorias padrão do sistema', () => {
-    expect(() => new Categoria('ALIMENTACAO')).not.toThrow();
-    expect(() => new Categoria('TRANSPORTE')).not.toThrow();
-    expect(() => new Categoria('HOSPEDAGEM')).not.toThrow();
+    expect(() => new Categoria({ id: '01', nome: 'ALIMENTACAO', descricao: 'Despesas com alimentação', cor: '#000000' ,ativo: true})).not.toThrow();
+    expect(() => new Categoria({ id: '02', nome: 'TRANSPORTE', descricao: 'Despesas com transporte', cor: '#000000' ,ativo: true})).not.toThrow();
+    expect(() => new Categoria({ id: '03', nome: 'HOSPEDAGEM', descricao: 'Despesas com hospedagem', cor: '#000000' ,ativo: true})).not.toThrow();
   });
 
   it('deve lançar erro para categorias não mapeadas', () => {
