@@ -15,4 +15,4 @@ async function publicarExemplo() {
   console.log('[service-grupos] Mensagem publicada em service_grupos/viagem');
 }
 
-publicarExemplo().catch(console.error);
+

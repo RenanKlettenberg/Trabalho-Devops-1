@@ -28,7 +28,8 @@ export async function iniciarConsumerGrupos() {
 
       const payload = JSON.parse(msg.content.toString());
       console.log(`[service-grupos] Mensagem recebida em ${fila}:`, payload);
-
+      // aqui vai a logica de processamento da mensagem, que pode envolver chamadas a outros serviços, banco de dados, etc.
+      //a linha seguinte responde ao orquestrador que a mensagem foi processada com sucesso, mas você pode adaptar para enviar respostas diferentes dependendo do resultado do processamento.
       const resposta = {
         sagaId: payload.sagaId,
         status: 'SUCESSO',

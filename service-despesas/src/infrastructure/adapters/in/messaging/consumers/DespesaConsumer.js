@@ -1,20 +1,12 @@
 import amqp from 'amqplib';
 
-/*
-  Consumer do microserviço de despesas.
-  Ele escuta os comandos enviados pelo orquestrador e responde
-  em filas específicas da saga.
-
-  Filas importantes:
-    - cmd_registrar_despesa: comando para registrar despesa
-    - cmd_cancelar_despesa: comando para cancelar despesa
-    - resposta_registrar_despesa: canal para responder sucesso/erro
-    - resposta_cancelar_despesa: canal para responder sucesso/erro
-*/
-export async function iniciarConsumerDespesa() {
-  const connection = await amqp.connect(
-    process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672'
-  );
+/* O consumer adapta RabbitMQ para os handlers da aplicação. */
+export async function iniciarConsumerDespesa({
+  registrarDespesa,
+  compensarDespesa,
+  url = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672'
+}) {
+  const connection = await amqp.connect(url);
 
   const channel = await connection.createChannel();
 
@@ -30,53 +22,35 @@ export async function iniciarConsumerDespesa() {
   channel.consume('cmd_registrar_despesa', async (msg) => {
     if (!msg) return;
 
-    const payload = JSON.parse(msg.content.toString());
-    console.log('[service-despesas] Comando registrar despesa recebido:', payload);
-
-    const resposta = {
-      sagaId: payload.sagaId,
-      status: 'SUCESSO',
-      evento: 'DESPESA_REGISTRADA',
-      dataProcessamento: new Date().toISOString()
-    };
-
-    if (msg.properties.replyTo) {
-      channel.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify(resposta)), {
-        persistent: true
-      });
-    } else {
-      channel.sendToQueue('resposta_registrar_despesa', Buffer.from(JSON.stringify(resposta)), {
-        persistent: true
-      });
+    try {
+      const payload = JSON.parse(msg.content.toString());
+      const despesa = await registrarDespesa.execute(payload);
+      const resposta = {
+        sagaId: msg.properties.correlationId,
+        status: 'SUCESSO',
+        evento: 'DESPESA_REGISTRADA',
+        despesaId: despesa.id
+      };
+      const filaResposta = msg.properties.replyTo || 'resposta_registrar_despesa';
+      await channel.assertQueue(filaResposta, { durable: true });
+      channel.sendToQueue(filaResposta, Buffer.from(JSON.stringify(resposta)), { persistent: true });
+      channel.ack(msg);
+    } catch (error) {
+      channel.nack(msg, false, false);
+      console.error('[service-despesas] Falha ao registrar despesa:', error);
     }
-
-    channel.ack(msg);
   });
 
   channel.consume('cmd_cancelar_despesa', async (msg) => {
     if (!msg) return;
 
-    const payload = JSON.parse(msg.content.toString());
-    console.log('[service-despesas] Comando cancelar despesa recebido:', payload);
-
-    const resposta = {
-      sagaId: payload.sagaId,
-      status: 'SUCESSO',
-      evento: 'DESPESA_CANCELADA',
-      dataProcessamento: new Date().toISOString()
-    };
-
-    if (msg.properties.replyTo) {
-      channel.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify(resposta)), {
-        persistent: true
-      });
-    } else {
-      channel.sendToQueue('resposta_cancelar_despesa', Buffer.from(JSON.stringify(resposta)), {
-        persistent: true
-      });
+    try {
+      await compensarDespesa.processarComando(msg);
+      channel.ack(msg);
+    } catch (error) {
+      channel.nack(msg, false, false);
+      console.error('[service-despesas] Falha ao compensar despesa:', error);
     }
-
-    channel.ack(msg);
   });
 
   console.log('[service-despesas] Consumer conectado às filas da saga.');

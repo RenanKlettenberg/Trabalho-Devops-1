@@ -1,21 +1,4 @@
-const Despesa = require('../../../src/domain/entities/Despesa');
-
-describe('Entidade Despesa', () => {
-  it('deve lançar um erro se o valor for menor ou igual a zero', () => {
-    expect(() => {
-      new Despesa({ valor: -50, moeda: 'BRL', categoria: 'Alimentação' });
-    }).toThrow('O valor da despesa deve ser maior que zero');
-  });
-
-  it('deve criar uma despesa válida com status inicial "PENDENTE"', () => {
-    const despesa = new Despesa({ valor: 150.50, moeda: 'BRL', categoria: 'Transporte' });
-    
-    expect(despesa.valor).toBe(150.50);
-    expect(despesa.status).toBe('PENDENTE');
-  });
-});
-
-import { Despesa } from '../../../../src/domain/entities/Despesa';
+import { Despesa } from '../../../../src/domain/entities/Despesa.js';
 
 describe('Entidade: Despesa', () => {
   it('deve instanciar uma despesa com dados válidos', () => {
@@ -32,15 +15,9 @@ describe('Entidade: Despesa', () => {
     expect(despesa.valor).toBe(150.0);
   });
 
-  it('deve lançar um erro caso o valor da despesa seja negativo', () => {
+  it('deve lançar um erro caso o valor da despesa seja menor ou igual a zero', () => {
     expect(() => {
-      new Despesa({
-        descricao: 'Erro de sistema',
-        valor: -50.0,
-        moedaOriginal: 'BRL',
-        categoria: 'OUTROS',
-        viagemId: 'v-123'
-      });
+      new Despesa({ valor: 0, moedaOriginal: 'BRL', categoria: 'OUTROS' });
     }).toThrow('O valor da despesa deve ser maior que zero');
   });
 

@@ -1,4 +1,5 @@
-import { CompensarDespesaCanceladaCommand } from '../../../../../src/application/commands/CompensarDespesaCancelada/CompensarDespesaCanceladaCommand.js';
+import { jest } from '@jest/globals';
+import { CompensarDespesaCanceladaCommand } from '../../../../src/application/commands/CompensarDespesaCancelada/CompensarDespesaCanceladaCommand.js';
 
 describe('Command: CompensarDespesaCancelada', () => {
   it('deve buscar as despesas ativas de um evento e atualizar o status para ESTORNADA', async () => {

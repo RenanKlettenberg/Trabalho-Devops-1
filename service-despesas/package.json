@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest --watchAll",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch=false",
     "start": "nodemon -L src/server.js"
   },
   "keywords": [],

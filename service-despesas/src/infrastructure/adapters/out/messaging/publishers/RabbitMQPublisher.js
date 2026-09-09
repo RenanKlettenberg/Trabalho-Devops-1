@@ -23,7 +23,7 @@ export class RabbitMQPublisher {
       await this.conectar();
     }
 
-    await this.channel.assertQueue(fila, { durable: true });
+    await this.channel.assertQueue('re', { durable: true });
 
     this.channel.sendToQueue(
       fila,
