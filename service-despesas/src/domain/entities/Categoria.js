@@ -37,3 +37,5 @@ export class Categoria {
   }
 }
 
+export default Categoria;
+

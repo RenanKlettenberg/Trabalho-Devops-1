@@ -12,4 +12,5 @@ class MoedaController {
     }
   }
 }
-module.exports = MoedaController;   
+export { MoedaController };
+export default MoedaController;

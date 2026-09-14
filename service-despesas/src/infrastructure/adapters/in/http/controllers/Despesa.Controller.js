@@ -41,4 +41,5 @@ class DespesaController {
   }
 }
 
-module.exports = DespesaController;
+export { DespesaController };
+export default DespesaController;

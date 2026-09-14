@@ -27,3 +27,5 @@ export class Moeda {
   }
 }
 
+export default Moeda;
+

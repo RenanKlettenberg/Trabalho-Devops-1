@@ -1,4 +1,5 @@
-import { ObterDashboardFinanceiroQuery } from '../../../../../src/application/queries/ObterDashboardFinanceiro/ObterDashboardFinanceiroQuery.js';
+import { jest } from '@jest/globals';
+import { ObterDashboardFinanceiroQuery } from '../../../../src/application/queries/ObterDashboardFinanceiro/ObterDashboardFinanceiroQuery.js';
 
 describe('Query: ObterDashboardFinanceiro', () => {
   it('deve retornar as despesas consolidadas na moeda principal', async () => {

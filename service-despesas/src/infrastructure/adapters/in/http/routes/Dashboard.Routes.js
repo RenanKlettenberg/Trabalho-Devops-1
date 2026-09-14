@@ -1,6 +1,6 @@
-const express = require('express');
+import express from 'express';
 
-module.exports = (dashboardController) => {
+export default (dashboardController) => {
   const router = express.Router();
 
   router.get('/financeiro', (req, res, next) => dashboardController.obterResumo(req, res, next));

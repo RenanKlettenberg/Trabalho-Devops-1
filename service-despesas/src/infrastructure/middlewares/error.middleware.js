@@ -1,4 +1,4 @@
-const AppError = require('../exceptions/AppError');
+import AppError from '../exceptions/AppError.js';
 
 function errorMiddleware(err, req, res, next) {
   // Se for um erro que nós criamos (AppError, DomainException, etc)
@@ -18,4 +18,5 @@ function errorMiddleware(err, req, res, next) {
   });
 }
 
-module.exports = errorMiddleware;
+export { errorMiddleware };
+export default errorMiddleware;

@@ -1,4 +1,4 @@
-const AppError = require('../../infrastructure/exceptions/AppError');
+import AppError from '../../infrastructure/exceptions/AppError.js';
 
 /**
  * DTO para a criação de uma nova despesa.
@@ -86,7 +86,9 @@ class ObterDashboardDTO {
   }
 }
 
-module.exports = {
+export {
   RegistrarDespesaDTO,
   ObterDashboardDTO
 };
+
+export default { RegistrarDespesaDTO, ObterDashboardDTO };

@@ -52,4 +52,5 @@ class ObterDashboardFinanceiro {
   }
 }
 
-module.exports = ObterDashboardFinanceiro;
+export { ObterDashboardFinanceiro };
+export default ObterDashboardFinanceiro;

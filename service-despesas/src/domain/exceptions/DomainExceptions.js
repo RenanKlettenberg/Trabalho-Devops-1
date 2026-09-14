@@ -1,4 +1,4 @@
-const AppError = require('../../infrastructure/exceptions/AppError');
+import AppError from '../../infrastructure/exceptions/AppError.js';
 
 class DomainException extends AppError {
   constructor(message) {
@@ -7,4 +7,5 @@ class DomainException extends AppError {
   }
 }
 
-module.exports = DomainException;
+export { DomainException };
+export default DomainException;

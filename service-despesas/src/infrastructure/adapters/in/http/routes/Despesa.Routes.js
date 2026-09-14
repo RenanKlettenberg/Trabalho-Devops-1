@@ -1,8 +1,8 @@
-const express = require('express');
-const DespesaController = require('../controllers/Despesa.Controller');
+import express from 'express';
+import DespesaController from '../controllers/Despesa.Controller.js';
 
 // Nota: Em uma aplicação real, a injeção de dependências seria feita por um container (ex: Awilix, Inversify)
-module.exports = (criarDespesaCommand, obterDespesaQuery) => {
+export default (criarDespesaCommand, obterDespesaQuery) => {
   const router = express.Router();
   const despesaController = new DespesaController(criarDespesaCommand, obterDespesaQuery);
 

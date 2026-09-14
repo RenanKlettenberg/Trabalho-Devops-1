@@ -1,6 +1,6 @@
-const express = require('express');
+import express from 'express';
 
-module.exports = (categoriaController) => {
+export default (categoriaController) => {
   const router = express.Router();
   router.get('/', (req, res, next) => categoriaController.listar(req, res, next));
   return router;

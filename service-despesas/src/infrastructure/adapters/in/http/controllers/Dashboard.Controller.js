@@ -22,4 +22,5 @@ class DashboardController {
   }
 }
 
-module.exports = DashboardController;
+export { DashboardController };
+export default DashboardController;

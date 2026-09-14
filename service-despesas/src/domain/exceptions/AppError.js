@@ -10,4 +10,5 @@ class AppError extends Error {
   }
 }
 
-module.exports = AppError;
+export { AppError };
+export default AppError;
