@@ -19,6 +19,19 @@ describe("Criar viagem", () => {
 
         expect(res.status).toBe(400)
     })
+
+     it("deve retornar 404 - NÃO ENCONTRADO", async () => {
+        const data = {
+            via_id: 999999,
+            via_nome: "Viagem inexistente",
+            via_data_ini: "11-13-2113 13:13",
+            via_data_fim: "12-31-2113 13:13",
+        }
+
+        const res = await api.put('3001', 'viagem/', data);
+
+        expect(res.status).toBe(404)
+    })
 })
 
 describe("Editar viagem", () => {

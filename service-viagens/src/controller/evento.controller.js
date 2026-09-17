@@ -1,7 +1,8 @@
+// controller/evento.controller.js
 import RESPONSE from '../shared/constants/response.js';
-import * as dto from '../dto/viagem.dto.js';
+import * as dto from '../dto/evento.dto.js';
 
-function criarControllerViagem(service) {
+function criarControllerEvento(service) {
     async function listar(_req, res) {
         const data = await service.listar();
         res.json({ ...RESPONSE.SUCESSO, payload: data })
@@ -12,28 +13,28 @@ function criarControllerViagem(service) {
         res.json({ ...RESPONSE.SUCESSO, payload: data })
     }
 
-    async function criarViagem(req, res) {
+    async function criarEvento(req, res) {
         const body = dto.criarDto(req.body);
-        const data = await service.criarViagem(body);
+        const data = await service.criarEvento(body);
 
         res.json({ ...RESPONSE.SUCESSO, payload: data })
     }
 
-    async function editarViagem(req, res) {
+    async function editarEvento(req, res) {
         const body = dto.editarDto(req.body);
-        const data = await service.editarViagem(body);
+        const data = await service.editarEvento(body);
 
         res.json({ ...RESPONSE.SUCESSO, payload: data })
     }
 
-    async function deletarViagem(req, res) {
+    async function deletarEvento(req, res) {
         const body = dto.deletarDto(req.body);
-        const data = await service.deletarViagem(body);
+        const data = await service.deletarEvento(body);
 
         res.json({ ...RESPONSE.SUCESSO, payload: data })
     }
 
-    return { listar, getById, criarViagem, editarViagem, deletarViagem }
+    return { listar, getById, criarEvento, editarEvento, deletarEvento }
 }
 
-export default criarControllerViagem;
+export default criarControllerEvento;
