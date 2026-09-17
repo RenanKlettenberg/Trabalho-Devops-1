@@ -1,5 +1,4 @@
-import Router from 'express';
-
+import { Router } from 'express';
 import participanteRoutes from './routes/participante.routes.js';
 import grupoRoutes from './routes/grupo.routes.js';
 import despesaParticipanteRoutes from './routes/despesaParticipante.routes.js';

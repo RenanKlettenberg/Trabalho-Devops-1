@@ -1,4 +1,4 @@
-import Router from 'express';
+import { Router } from 'express';
 import controller from '../modules/despesaParticipante.module.js';
 import authMiddleware from '../infrastructure/middlewares/auth.middleware.js';
 
