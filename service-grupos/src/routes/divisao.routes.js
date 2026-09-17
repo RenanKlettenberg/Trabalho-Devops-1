@@ -1,4 +1,4 @@
-import Router from 'express';
+import { Router } from 'express';
 import controller from '../modules/divisao.module.js';
 import authMiddleware from '../infrastructure/middlewares/auth.middleware.js';
 
