@@ -1,5 +1,5 @@
 const LIMITE_VIAGENS_ATIVAS = Object.freeze({
-    free: 3,
+    free: 5,
     premium: 20,
 });
 
