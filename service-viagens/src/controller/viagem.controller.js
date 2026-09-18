@@ -18,16 +18,16 @@ function criarControllerViagem(service) {
 
         res.json({ ...RESPONSE.SUCESSO, payload: data })
     }
-
+    
     async function editarViagem(req, res) {
-        const body = dto.editarDto(req.body);
+        const body = dto.editarDto({ ...req.body, via_id: Number(req.params.id) });
         const data = await service.editarViagem(body);
 
         res.json({ ...RESPONSE.SUCESSO, payload: data })
     }
-
+    
     async function deletarViagem(req, res) {
-        const body = dto.deletarDto(req.body);
+        const body = dto.deletarDto({ ...req.body, via_id: Number(req.params.id) });
         const data = await service.deletarViagem(body);
 
         res.json({ ...RESPONSE.SUCESSO, payload: data })

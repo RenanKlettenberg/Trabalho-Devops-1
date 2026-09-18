@@ -1,4 +1,3 @@
-// dto/evento.dto.js
 import z from 'zod';
 import { CATEGORIA_EVENTO, STATUS_EVENTO } from '../shared/constants/evento.constants.js';
 
@@ -22,7 +21,6 @@ const baseSchema = z.object({
         .default(1),
 
     eve_data_estimatida: z.boolean().default(true),
-
     eve_data_ini: z.coerce.date({ error: "Data de início inválida." }).optional(),
     eve_data_fim: z.coerce.date({ error: "Data de fim inválida." }).optional(),
 
@@ -44,18 +42,11 @@ const baseSchema = z.object({
     path: ["eve_data_fim"],
 });
 
-const deletarSchema = z.object({
-    eve_id: z.number({ required_error: "ID do evento é obrigatório." }).int(),
-});
-
-function deletarDto(body) {
-    return deletarSchema.parse(body);
-}
-
 const criarSchema = baseSchema;
 
 const editarSchema = z.object({
     eve_id: z.number({ required_error: "ID do evento é obrigatório." }).int(),
+    usu_id: z.number({ required_error: "Usuário é obrigatório." }).int(), // adicionado
 
     eve_nome: z.string().trim()
         .max(255, "O nome deve ter menos de 255 caractéres.")
@@ -92,12 +83,21 @@ const editarSchema = z.object({
     path: ["eve_data_fim"],
 });
 
+const deletarSchema = z.object({
+    eve_id: z.number({ required_error: "ID do evento é obrigatório." }).int(),
+    usu_id: z.number({ required_error: "Usuário é obrigatório." }).int(),
+});
+
 function criarDto(body) {
     return criarSchema.parse(body);
 }
 
 function editarDto(body) {
     return editarSchema.parse(body);
+}
+
+function deletarDto(body) {
+    return deletarSchema.parse(body);
 }
 
 export { criarDto, editarDto, deletarDto };

@@ -22,6 +22,7 @@ const criarSchema = z.object({
 
 const editarSchema = z.object({
     via_id: z.number({ required_error: "ID da viagem é obrigatório." }).int(),
+    usu_id: z.number({ required_error: "Usuário é obrigatório." }).int(),
 
     via_nome: z.string().trim()
         .max(255, "O nome deve ter menos de 255 caractéres.")
@@ -45,11 +46,8 @@ const editarSchema = z.object({
 
 const deletarSchema = z.object({
     via_id: z.number({ required_error: "ID da viagem é obrigatório." }).int(),
+    usu_id: z.number({ required_error: "Usuário é obrigatório." }).int(),
 });
-
-function deletarDto(body) {
-    return deletarSchema.parse(body);
-}
 
 function criarDto(body) {
     return criarSchema.parse(body);
@@ -59,4 +57,8 @@ function editarDto(body) {
     return editarSchema.parse(body);
 }
 
-export { criarDto, editarDto };
+function deletarDto(body) {
+    return deletarSchema.parse(body);
+}
+
+export { criarDto, editarDto, deletarDto };

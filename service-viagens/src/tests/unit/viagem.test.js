@@ -6,6 +6,7 @@ import * as dto from "../../dto/viagem.dto.js";
 describe("Editar viagem", () => {
     const body_cliente = {
         via_id: 1,
+        usu_id: 1,
         via_nome: "Viagem editada",
         via_data_ini: "11-13-2113 13:13",
         via_data_fim: "12-31-2113 13:13",

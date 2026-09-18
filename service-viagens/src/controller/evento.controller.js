@@ -21,14 +21,14 @@ function criarControllerEvento(service) {
     }
 
     async function editarEvento(req, res) {
-        const body = dto.editarDto(req.body);
+        const body = dto.editarDto({ ...req.body, eve_id: Number(req.params.id) });
         const data = await service.editarEvento(body);
 
         res.json({ ...RESPONSE.SUCESSO, payload: data })
     }
 
     async function deletarEvento(req, res) {
-        const body = dto.deletarDto(req.body);
+        const body = dto.deletarDto({ ...req.body, eve_id: Number(req.params.id) });
         const data = await service.deletarEvento(body);
 
         res.json({ ...RESPONSE.SUCESSO, payload: data })

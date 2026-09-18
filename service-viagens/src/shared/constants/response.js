@@ -28,6 +28,11 @@ const RESPONSE = Object.freeze({
         message: "Viagem não encontrada.",
         status: 404
     },
+    EVENTO_NAO_ENCONTRADO: {
+        code: "EVE01",
+        message: "Evento não encontrado.",
+        status: 404
+    },
 });
 
 export default RESPONSE;

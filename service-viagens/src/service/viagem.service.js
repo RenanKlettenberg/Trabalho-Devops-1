@@ -1,8 +1,7 @@
-// service/viagem.service.js
 import AppError from "../infrastructure/errors/app.error.js";
 import RESPONSE from "../shared/constants/response.js";
-import LIMITE_VIAGENS_ATIVAS from "../shared/constants/plano.constants.js";
 import STATUS_VIAGEM from "../shared/constants/viagem.constants.js";
+import LIMITE_VIAGENS_ATIVAS from "../shared/constants/plano.constants.js";
 
 function criarServiceViagem(repository) {
     async function listar(filtros = {}) {
