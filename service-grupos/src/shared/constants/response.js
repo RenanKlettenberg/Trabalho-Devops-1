@@ -43,6 +43,16 @@ const RESPONSE = Object.freeze({
         message: "Grupo não encontrado.",
         status: 404
     },
+    GRUPO_SEM_PARTICIPANTES: {
+        code: "GRU04",
+        message: "O grupo não possui participantes para dividir a despesa.",
+        status: 409
+    },
+    PARTICIPANTE_FORA_DO_GRUPO: {
+        code: "GRU05",
+        message: "Um dos participantes informados não pertence a esse grupo.",
+        status: 400
+    },
 });
 
 export default RESPONSE;
