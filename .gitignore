@@ -2,6 +2,9 @@
 */node_modules
 */.env
 
+# Relatórios de cobertura de teste (gerados por `npm run test:coverage`)
+*/coverage
+
 #Secrets
 secrets/*
 !secrets/README.md
