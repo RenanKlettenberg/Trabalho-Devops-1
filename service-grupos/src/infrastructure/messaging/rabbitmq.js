@@ -24,7 +24,7 @@ function esperar(ms) {
   sobe. Sem essa repetição o serviço morre no `docker compose up` por tentar
   conectar cedo demais.
 */
-async function conectarRabbitMQ({ tentativas = 10, intervaloMs = 3000 } = {}) {
+async function conectarRabbitMQ({ tentativas = 20, intervaloMs = 3000 } = {}) {
     if (channel) return channel;
 
     let ultimoErro;

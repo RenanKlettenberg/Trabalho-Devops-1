@@ -1,11 +1,16 @@
 {
   "name": "service-orquestrador",
   "version": "1.0.0",
-  "main": "Orquestrador.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node Orquestrador.js"
+    "start": "nodemon -L server.js",
+    "filas": "node Orquestrador.js"
   },
   "dependencies": {
-    "amqplib": "^2.0.1"
+    "amqplib": "^2.0.1",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

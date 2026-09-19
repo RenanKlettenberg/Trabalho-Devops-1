@@ -28,7 +28,12 @@ async function configurarFilas() {
         'resposta_registrar_despesa',
         'cmd_cancelar_despesa',
         'resposta_cancelar_despesa',
-        
+        //saga - passo do service-grupos (ver SagaDespesaCompartilhada.js)
+        'cmd_vincular_despesa_grupo',
+        'resposta_vincular_despesa_grupo',
+        'cmd_desvincular_despesa_grupo',
+        'resposta_desvincular_despesa_grupo',
+
     ];
 
     for (const fila of filas) {
