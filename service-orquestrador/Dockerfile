@@ -4,9 +4,10 @@ WORKDIR /usr/src/app
 
 ENV NODE_ENV=development
 
-COPY package.json package-lock.json ./
+COPY package*.json ./
 
 RUN npm ci
+
 
 COPY . .
 

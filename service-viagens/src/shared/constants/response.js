@@ -18,25 +18,20 @@ const RESPONSE = Object.freeze({
         message: "Você não tem permissão para acessar esse recurso!",
         status: 403
     },
-    USUARIO_JA_CADASTRADO: {
-        code: "USU01",
-        message: "Já existe um usuário cadastrado com esse e-mail!",
+    VIAGENS_LIMITE_EXCEDIDO: {
+        code: "VIA01",
+        message: "Você atingiu o limite de viagens ativas do seu plano.",
         status: 409
     },
-    CREDENCIAIS_INVALIDAS: {
-        code: "SES01",
-        message: "Login ou senha inválidos.",
-        status: 401
+    VIAGEM_NAO_ENCONTRADA: {
+        code: "VIA02",
+        message: "Viagem não encontrada.",
+        status: 404
     },
-    USUARIO_NAO_LOGADO: {
-        code: "SES02",
-        message: "Faça login para poder continuar.",
-        status: 401
-    },
-    TOKEN_INVALIDO: {
-        code: "SES03",
-        message: "Token inválido.",
-        status: 401
+    EVENTO_NAO_ENCONTRADO: {
+        code: "EVE01",
+        message: "Evento não encontrado.",
+        status: 404
     },
 });
 

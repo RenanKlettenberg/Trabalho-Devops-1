@@ -32,5 +32,5 @@ export default {
     post: (porta, rota, body, token) => request(porta, rota, 'POST', body, token),
     put: (porta, rota, body, token) => request(porta, rota, 'PUT', body, token),
     patch: (porta, rota, body, token) => request(porta, rota, 'PATCH', body, token),
-    delete: (porta, rota, token) => request(porta, rota, 'DELETE', null, token),
+    delete: (porta, rota, body, token) => request(porta, rota, 'DELETE', body, token),
 };

@@ -168,6 +168,28 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  service-orquestrador:
+    build: ./service-orquestrador
+    ports:
+      - '3003:3003' #Por enquanto vai ter acesso público pra teste, e pq n temos o API Gateway pronto.
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./service-orquestrador:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      PORT_BACK: 3003
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      # TEMPORÁRIO: liga o dublê do service-despesas (ver stubs/despesasStub.js).
+      # Desligar assim que o consumer real do service-despesas estiver pronto.
+      SIMULAR_DESPESAS: 'true'
 
   redis:
     image: redis:7-alpine
