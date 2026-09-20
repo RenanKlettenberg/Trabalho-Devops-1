@@ -16,8 +16,35 @@ function criarServiceSaga({
     divisaoService,
 }) {
     /*
-      Passo da saga: uma despesa já foi registrada no service-despesas e agora
-      precisa ser rateada entre os participantes do grupo.
+      Passo de VALIDAÇÃO da saga (padrão combinado com o orquestrador): roda
+      ANTES da despesa ser criada, só leitura — confirma que o grupo existe e
+      que tem pra quem ratear. Não grava nada, por isso não precisa de
+      compensação: se um passo depois desse falhar, não há o que desfazer aqui.
+    */
+    async function validarGrupo({ gru_id }) {
+        if (!Number.isFinite(Number(gru_id))) {
+            throw new AppError({ ...RESPONSE.DADO_INVALIDO, message: 'gru_id é obrigatório.' });
+        }
+
+        // Lança GRUPO_NAO_ENCONTRADO se o grupo não existir.
+        await grupoService.getById(gru_id);
+
+        const doGrupo = (await participanteRepository.listarPorGrupo(gru_id)).rows;
+        const elegiveis = doGrupo.filter((participante) => !participante.par_isento);
+
+        if (elegiveis.length === 0) {
+            throw new AppError(RESPONSE.GRUPO_SEM_PARTICIPANTES);
+        }
+
+        return { gru_id, participantes: elegiveis.length };
+    }
+
+    /*
+      Passo de escrita: recebe o des_id já gerado pelo service-despesas e
+      grava o rateio de verdade. Pronto e testado ponta a ponta; hoje não é
+      chamado por nenhum passo da saga do orquestrador (que só usa
+      validarGrupo, acima) — fica disponível para quando o disparo dessa
+      escrita for definido (evento do despesas, ou chamada direta).
     */
     async function vincularDespesa({ gru_id, des_id, valor, participantes }) {
         validarComando({ gru_id, des_id, valor });
@@ -108,7 +135,7 @@ function criarServiceSaga({
         });
     }
 
-    return { vincularDespesa, desvincularDespesa };
+    return { validarGrupo, vincularDespesa, desvincularDespesa };
 }
 
 export default criarServiceSaga;

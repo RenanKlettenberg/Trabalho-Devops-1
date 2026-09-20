@@ -12,6 +12,11 @@
 */
 
 export const FILAS = Object.freeze({
+    // Passo de validação da saga (antes da despesa existir) — contrato combinado
+    // com o service-orquestrador, ver ExemploSaga/README.md dele.
+    CMD_VALIDAR: 'cmd_validar_grupo',
+    RESPOSTA_VALIDAR: 'resposta_validar_grupo',
+
     // Comandos que o orquestrador envia para o service-grupos
     CMD_VINCULAR: 'cmd_vincular_despesa_grupo',
     CMD_DESVINCULAR: 'cmd_desvincular_despesa_grupo',
@@ -99,6 +104,19 @@ function criarConsumerSaga({ channel, sagaService }) {
         return resposta;
     }
 
+    /*
+      Passo de validação. O orquestrador manda o campo em camelCase (`gruId`,
+      no padrão dele) — aceitamos os dois formatos aqui na borda, pra não
+      obrigar o resto do service-grupos (que usa gru_id) a conhecer isso.
+    */
+    function tratarValidarGrupo(msg) {
+        return tratarComando(msg, {
+            executar: (payload) => sagaService.validarGrupo({ gru_id: payload.gruId ?? payload.gru_id }),
+            evento: 'GRUPO_VALIDADO',
+            filaRespostaPadrao: FILAS.RESPOSTA_VALIDAR,
+        });
+    }
+
     function tratarVincular(msg) {
         return tratarComando(msg, {
             executar: (payload) => sagaService.vincularDespesa(payload),
@@ -159,6 +177,7 @@ function criarConsumerSaga({ channel, sagaService }) {
             await channel.assertQueue(fila, { durable: true });
         }
 
+        await channel.consume(FILAS.CMD_VALIDAR, tratarValidarGrupo);
         await channel.consume(FILAS.CMD_VINCULAR, tratarVincular);
         await channel.consume(FILAS.CMD_DESVINCULAR, tratarDesvincular);
         await channel.consume(FILAS.EVENTOS_DESPESA, tratarEvento);
@@ -169,7 +188,7 @@ function criarConsumerSaga({ channel, sagaService }) {
         return channel;
     }
 
-    return { iniciar, tratarVincular, tratarDesvincular, tratarEvento };
+    return { iniciar, tratarValidarGrupo, tratarVincular, tratarDesvincular, tratarEvento };
 }
 
 export default criarConsumerSaga;

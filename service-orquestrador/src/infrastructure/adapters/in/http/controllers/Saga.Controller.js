@@ -8,14 +8,15 @@ class SagaController {
 
   async registrarDespesa(req, res) {
     try {
-      const { descricao, valor, moeda, categoria, viagemId } = req.body;
+      const { descricao, valor, moeda, categoria, viagemId, gruId } = req.body;
 
       const saga = await this.registrarDespesaSaga.execute({
         descricao,
         valor,
         moeda,
         categoria,
-        viagemId
+        viagemId,
+        gruId
       });
 
       return res.status(saga.status === 'CONCLUIDA' ? 201 : 422).json(saga);

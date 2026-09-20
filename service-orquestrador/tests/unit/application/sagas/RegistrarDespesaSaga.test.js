@@ -60,4 +60,61 @@ describe('Saga: RegistrarDespesa', () => {
     expect(resultado.resultado.motivo).toBe('ERRO_COMUNICACAO');
     expect(resultado.passos[0].status).toBe('ERRO');
   });
+
+  describe('passo opcional VALIDAR_GRUPO (despesa compartilhada)', () => {
+    const dadosComGrupo = { ...dadosDespesa, gruId: 4 };
+
+    it('não chama a fila de validação quando a despesa não tem gruId (despesa pessoal)', async () => {
+      const mockRpcClient = {
+        requisitar: jest.fn().mockResolvedValue({ status: 'SUCESSO', despesaId: 'd-1' })
+      };
+      const saga = new RegistrarDespesaSaga(mockRpcClient, { salvar: jest.fn((s) => s) });
+
+      await saga.execute(dadosDespesa);
+
+      expect(mockRpcClient.requisitar).toHaveBeenCalledTimes(1);
+      expect(mockRpcClient.requisitar).not.toHaveBeenCalledWith('cmd_validar_grupo', expect.anything(), expect.anything(), expect.anything());
+    });
+
+    it('valida o grupo antes de registrar a despesa quando gruId é informado', async () => {
+      const mockRpcClient = {
+        requisitar: jest.fn()
+          .mockResolvedValueOnce({ status: 'SUCESSO', evento: 'GRUPO_VALIDADO' })
+          .mockResolvedValueOnce({ status: 'SUCESSO', evento: 'DESPESA_REGISTRADA', despesaId: 'd-1' })
+      };
+      const saga = new RegistrarDespesaSaga(mockRpcClient, { salvar: jest.fn((s) => s) });
+
+      const resultado = await saga.execute(dadosComGrupo);
+
+      expect(mockRpcClient.requisitar).toHaveBeenNthCalledWith(
+        1,
+        'cmd_validar_grupo',
+        'resposta_validar_grupo',
+        { gruId: 4 },
+        { correlationId: resultado.id }
+      );
+      expect(mockRpcClient.requisitar).toHaveBeenNthCalledWith(
+        2,
+        'cmd_registrar_despesa',
+        'resposta_registrar_despesa',
+        expect.objectContaining({ viagemId: 'v-1' }),
+        { correlationId: resultado.id }
+      );
+      expect(resultado.status).toBe('CONCLUIDA');
+    });
+
+    it('não chega a registrar a despesa se a validação do grupo falhar', async () => {
+      const mockRpcClient = {
+        requisitar: jest.fn().mockResolvedValue({ status: 'FALHA', erro: { code: 'GRU03', message: 'Grupo não encontrado.' } })
+      };
+      const saga = new RegistrarDespesaSaga(mockRpcClient, { salvar: jest.fn((s) => s) });
+
+      const resultado = await saga.execute(dadosComGrupo);
+
+      expect(mockRpcClient.requisitar).toHaveBeenCalledTimes(1); // só VALIDAR_GRUPO, nunca chegou em REGISTRAR_DESPESA
+      expect(resultado.status).toBe('FALHA');
+      expect(resultado.passos).toHaveLength(1);
+      expect(resultado.passos[0].nome).toBe('VALIDAR_GRUPO');
+    });
+  });
 });

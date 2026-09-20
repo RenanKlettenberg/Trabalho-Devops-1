@@ -38,6 +38,7 @@ describe('saga.consumer', () => {
     beforeEach(() => {
         channel = criarChannelFake();
         sagaService = {
+            validarGrupo: jest.fn(),
             vincularDespesa: jest.fn(),
             desvincularDespesa: jest.fn(),
         };
@@ -57,12 +58,57 @@ describe('saga.consumer', () => {
 
             const filasConsumidas = channel.consume.mock.calls.map(([fila]) => fila);
             expect(filasConsumidas).toEqual([
+                FILAS.CMD_VALIDAR,
                 FILAS.CMD_VINCULAR,
                 FILAS.CMD_DESVINCULAR,
                 FILAS.EVENTOS_DESPESA,
                 FILAS.EVENTOS_VIAGEM,
                 FILAS.EVENTOS_USUARIO,
             ]);
+        });
+    });
+
+    describe('tratarValidarGrupo', () => {
+        it('aceita gruId (padrão do orquestrador) e responde SUCESSO', async () => {
+            sagaService.validarGrupo.mockResolvedValue({ gru_id: 4, participantes: 2 });
+
+            await consumer.tratarValidarGrupo(criarMensagem({ sagaId: 'saga-1', gruId: 4 }));
+
+            expect(sagaService.validarGrupo).toHaveBeenCalledWith({ gru_id: 4 });
+
+            const { fila, mensagem } = lerEnvio(channel);
+            expect(fila).toBe(FILAS.RESPOSTA_VALIDAR);
+            expect(mensagem).toMatchObject({
+                sagaId: 'saga-1',
+                status: 'SUCESSO',
+                evento: 'GRUPO_VALIDADO',
+                dados: { gru_id: 4, participantes: 2 },
+            });
+            expect(channel.ack).toHaveBeenCalledTimes(1);
+        });
+
+        it('também aceita gru_id (nosso padrão), pra ficar robusto nos dois formatos', async () => {
+            sagaService.validarGrupo.mockResolvedValue({ gru_id: 4, participantes: 2 });
+
+            await consumer.tratarValidarGrupo(criarMensagem({ sagaId: 'saga-1', gru_id: 4 }));
+
+            expect(sagaService.validarGrupo).toHaveBeenCalledWith({ gru_id: 4 });
+        });
+
+        it('responde FALHA (não nack) quando o grupo não existe, pra saga não travar', async () => {
+            sagaService.validarGrupo.mockRejectedValue(
+                Object.assign(new Error('Grupo não encontrado.'), { code: 'GRU03' })
+            );
+
+            await consumer.tratarValidarGrupo(criarMensagem({ sagaId: 'saga-1', gruId: 999 }));
+
+            expect(lerEnvio(channel).mensagem).toMatchObject({
+                status: 'FALHA',
+                evento: 'FALHA_GRUPO_VALIDADO',
+                erro: { code: 'GRU03', message: 'Grupo não encontrado.' },
+            });
+            expect(channel.ack).toHaveBeenCalledTimes(1);
+            expect(channel.nack).not.toHaveBeenCalled();
         });
     });
 

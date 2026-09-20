@@ -38,6 +38,42 @@ describe('saga.service', () => {
         });
     });
 
+    describe('validarGrupo', () => {
+        it('confirma o grupo quando ele existe e tem participante elegível', async () => {
+            await expect(service.validarGrupo({ gru_id: 1 })).resolves.toEqual({
+                gru_id: 1,
+                participantes: 2, // Ana e Bruno; Carla é isenta
+            });
+        });
+
+        it('não grava nada no banco (é só leitura)', async () => {
+            await service.validarGrupo({ gru_id: 1 });
+
+            expect(deps.despesaParticipanteRepository.criarVinculosEmLote).not.toHaveBeenCalled();
+        });
+
+        it('propaga GRUPO_NAO_ENCONTRADO quando o grupo não existe', async () => {
+            deps.grupoService.getById.mockRejectedValue(
+                Object.assign(new Error('Grupo não encontrado.'), { code: 'GRU03' })
+            );
+
+            await expect(service.validarGrupo({ gru_id: 999 })).rejects.toMatchObject({ code: 'GRU03' });
+        });
+
+        it('falha quando todos os participantes do grupo são isentos', async () => {
+            deps.participanteRepository.listarPorGrupo.mockResolvedValue({
+                rowCount: 1,
+                rows: [{ par_id: 3, gru_id: 1, par_nome: 'Carla', par_isento: true }],
+            });
+
+            await expect(service.validarGrupo({ gru_id: 1 })).rejects.toMatchObject({ code: 'GRU04' });
+        });
+
+        it('rejeita comando sem gru_id', async () => {
+            await expect(service.validarGrupo({})).rejects.toMatchObject({ code: '2' });
+        });
+    });
+
     describe('vincularDespesa', () => {
         it('vincula todos os participantes não isentos quando o comando não informa a lista', async () => {
             await service.vincularDespesa({ gru_id: 1, des_id: 42, valor: 300 });

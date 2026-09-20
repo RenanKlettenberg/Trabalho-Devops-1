@@ -19,6 +19,19 @@ export class RegistrarDespesaSaga {
 
   passos() {
     return [
+      /*
+        Passo de validação (opcional): só entra na saga se a despesa vier
+        associada a um grupo (dados.gruId). Uma despesa pessoal, sem grupo,
+        não precisa e não deve passar por aqui — daí o `quando`.
+        Contrato e convenção de nomes em ExemploSaga/README.md.
+      */
+      {
+        nome: 'VALIDAR_GRUPO',
+        filaComando: 'cmd_validar_grupo',
+        filaResposta: 'resposta_validar_grupo',
+        quando: (dados) => Boolean(dados.gruId),
+        montarPayload: (dados) => ({ gruId: dados.gruId }),
+      },
       {
         nome: 'REGISTRAR_DESPESA',
         filaComando: 'cmd_registrar_despesa',
@@ -39,7 +52,9 @@ export class RegistrarDespesaSaga {
     const sagaId = crypto.randomUUID();
     const saga = new Saga({ id: sagaId, tipo: 'REGISTRAR_DESPESA', payload: dados });
 
-    for (const passo of this.passos()) {
+    const passosAplicaveis = this.passos().filter((passo) => !passo.quando || passo.quando(dados));
+
+    for (const passo of passosAplicaveis) {
       try {
         const resposta = await this.rpcClient.requisitar(
           passo.filaComando,

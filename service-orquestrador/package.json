@@ -5,16 +5,11 @@
   "main": "src/main.js",
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch=false",
-    "start": "nodemon -L src/infrastructure/server.js",
-    "filas": "node Orquestrador.js"
-  },
+    "start": "nodemon -L src/infrastructure/server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module",
-  "dependencies": {
-    "amqplib": "^2.0.1",
   "type": "module",
   "dependencies": {
     "amqplib": "^2.0.1",

@@ -125,8 +125,10 @@ services:
     ports:
       - '3004:3004' #Por enquanto vai ter acesso público pra teste, e pq n temos o API Gateway pronto.
     depends_on:
-      - db-orquestrador
-      - rabbitmq
+      db-orquestrador:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     volumes:
       - ./service-orquestrador:/usr/src/app # Meu código = Código no container
       - /usr/src/app/node_modules # node_modules do container != meu node_modules
@@ -173,23 +175,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
-  service-orquestrador:
-    build: ./service-orquestrador
-    ports:
-      - '3003:3003' #Por enquanto vai ter acesso público pra teste, e pq n temos o API Gateway pronto.
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    volumes:
-      - ./service-orquestrador:/usr/src/app
-      - /usr/src/app/node_modules
-    environment:
-      PORT_BACK: 3003
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-      # TEMPORÁRIO: liga o dublê do service-despesas (ver stubs/despesasStub.js).
-      # Desligar assim que o consumer real do service-despesas estiver pronto.
-      SIMULAR_DESPESAS: 'true'
 
   redis:
     image: redis:7-alpine
