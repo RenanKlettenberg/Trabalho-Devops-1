@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch=false",
-    "start": "nodemon -L src/server.js"
+    "start": "nodemon -L src/infrastructure/server.js"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +15,7 @@
     "amqplib": "^2.0.1",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
@@ -29,5 +30,10 @@
   },
   "directories": {
     "test": "tests"
+  },
+  "jest": {
+    "setupFiles": [
+      "dotenv/config"
+    ]
   }
 }

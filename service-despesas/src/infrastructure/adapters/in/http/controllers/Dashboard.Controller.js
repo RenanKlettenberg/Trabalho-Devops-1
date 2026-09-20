@@ -5,17 +5,18 @@ class DashboardController {
 
   async obterResumo(req, res, next) {
     try {
-      // Pode receber filtros via Query Params (ex: ?usuarioId=123&mes=09)
-      const { usuarioId, grupoId, mes, ano } = req.query;
+      const { viagemId } = req.params;
+      const { moeda } = req.query;
 
-      const dashboard = await this.obterDashboardFinanceiroQuery.execute({
-        usuarioId,
-        grupoId,
-        mes,
-        ano
+      const resultado = await this.obterDashboardFinanceiroQuery.execute({
+        viagemId,
+        moedaDestino: moeda
       });
 
-      return res.status(200).json(dashboard);
+      return res.status(200).json({
+        moedaBase: moeda,
+        total: resultado.total
+      });
     } catch (error) {
       next(error);
     }

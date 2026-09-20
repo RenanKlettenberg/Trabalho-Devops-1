@@ -10,4 +10,26 @@ describe('Entidade de Domínio: Moeda', () => {
   it('deve lançar erro (MoedaInvalidaException) para códigos desconhecidos', () => {
     expect(() => new Moeda({ codigo: 'XYZS', simbolo: 'XYZS' })).toThrow('Moeda não suportada');
   });
+
+  it('deve lançar erro quando o símbolo não é informado', () => {
+    expect(() => new Moeda({ codigo: 'BRL', simbolo: '' })).toThrow('O símbolo da moeda é obrigatório.');
+  });
+
+  it('deve lançar erro quando a taxa de câmbio base não é positiva', () => {
+    expect(() => new Moeda({ codigo: 'BRL', simbolo: 'R$', taxaCambioBase: 0 })).toThrow('A taxa de câmbio base deve ser maior que zero.');
+  });
+
+  it('atualizarTaxa deve trocar a taxa quando o valor é positivo', () => {
+    const moeda = new Moeda({ codigo: 'USD', simbolo: '$' });
+
+    moeda.atualizarTaxa(5.25);
+
+    expect(moeda.taxaCambioBase).toBe(5.25);
+  });
+
+  it('atualizarTaxa deve rejeitar valores não positivos', () => {
+    const moeda = new Moeda({ codigo: 'USD', simbolo: '$' });
+
+    expect(() => moeda.atualizarTaxa(0)).toThrow('A nova taxa de câmbio deve ser maior que zero.');
+  });
 });

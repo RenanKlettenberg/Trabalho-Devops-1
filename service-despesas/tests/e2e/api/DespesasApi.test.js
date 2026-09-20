@@ -1,8 +1,16 @@
 import request from 'supertest';
 import { app } from '../../../src/main.js'; // A instância do seu servidor Express/Fastify
+import database from '../../../src/infrastructure/config/database.js';
 
 describe('E2E: API REST de Despesas e Dashboard', () => {
-  
+  // Os dois testes compartilham a mesma 'viagem-123' de propósito (o segundo
+  // depende da despesa criada pelo primeiro), então a limpeza só acontece no final.
+  afterAll(async () => {
+    await database.query('TRUNCATE despesas.despesas;');
+    await database.pool.end();
+  });
+
+
   it('POST /api/despesas - deve registrar uma nova despesa e retornar 201 Created', async () => {
     const payload = {
       descricao: 'Passagem Aérea',

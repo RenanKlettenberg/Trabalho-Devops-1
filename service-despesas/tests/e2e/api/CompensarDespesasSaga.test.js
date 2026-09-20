@@ -1,6 +1,8 @@
+import { jest } from '@jest/globals';
 import { CompensarDespesasCommandHandler } from '../../../src/infrastructure/adapters/in/messaging/listeners/CompensarDespesasCommandHandler.js';
-import { PostgresDespesaRepository } from '../../../src/infrastructure/adapters/out/database/postgres/PostgresDespesaRepository.js';
+import { PostgresDespesaRepository } from '../../../src/infrastructure/adapters/out/database/PostgresDespesaRepository.js';
 import { Despesa } from '../../../src/domain/entities/Despesa.js';
+import database from '../../../src/infrastructure/config/database.js';
 
 describe('E2E: Saga Orquestrado - Handler de Compensação', () => {
   let handler;
@@ -11,6 +13,14 @@ describe('E2E: Saga Orquestrado - Handler de Compensação', () => {
     repository = new PostgresDespesaRepository();
     mockPublisher = { publicar: jest.fn().mockResolvedValue(true) };
     handler = new CompensarDespesasCommandHandler(repository, mockPublisher);
+  });
+
+  afterEach(async () => {
+    await database.query('TRUNCATE despesas.despesas;');
+  });
+
+  afterAll(async () => {
+    await database.pool.end();
   });
 
   it('deve processar o comando do orquestrador, estornar as despesas e enviar a resposta', async () => {

@@ -1,4 +1,4 @@
-import CompensarDespesaCanceladaCommand from '../../../../application/commands/CompensarDespesaCancelada/CompensarDespesaCanceladaCommand.js';
+import CompensarDespesaCanceladaCommand from '../../../../../application/commands/CompensarDespesaCancelada/CompensarDespesaCanceladaCommand.js';
 
 export class CompensarDespesasCommandHandler {
   constructor(repository, publisher) {

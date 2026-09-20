@@ -8,14 +8,16 @@ class DespesaController {
   async criar(req, res) {
     try {
       // 1. Extrai dados do mundo externo (HTTP)
-      const { valor, descricao, categoria, data } = req.body;
+      const { valor, descricao, categoria, moeda, viagemId, eventoId } = req.body;
 
       // 2. Chama a linguagem da Camada de Aplicação (Command)
       const resultado = await this.criarDespesaCommand.execute({
         valor,
         descricao,
         categoria,
-        data
+        moeda,
+        viagemId,
+        eventoId
       });
 
       // 3. Traduz a resposta para o mundo externo

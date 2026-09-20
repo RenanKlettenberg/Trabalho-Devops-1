@@ -1,5 +1,5 @@
+import { jest } from '@jest/globals';
 import { ExchangeRateApiAdapter } from '../../../src/infrastructure/adapters/out/external/exchange-api/ExchangeRateApiAdapter.js';
-// import nock from 'nock'; // Recomendado para interceptar a chamada HTTP real
 
 describe('Integração: ExchangeRateApiAdapter', () => {
   let adapter;
@@ -8,10 +8,11 @@ describe('Integração: ExchangeRateApiAdapter', () => {
     adapter = new ExchangeRateApiAdapter();
   });
 
-  it('deve retornar a taxa de conversão correta ao consultar a API externa', async () => {
-    // Exemplo usando nock (opcional, mas recomendado):
-    // nock('https://api.exchangerate.host').get('/convert?from=USD&to=BRL').reply(200, { result: 5.20 });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
+  it('deve retornar a taxa de conversão correta ao consultar a API externa', async () => {
     const taxa = await adapter.obterTaxa('USD', 'BRL');
 
     expect(typeof taxa).toBe('number');
@@ -19,8 +20,17 @@ describe('Integração: ExchangeRateApiAdapter', () => {
   });
 
   it('deve lançar erro se a API externa estiver fora do ar (timeout ou 500)', async () => {
-    // nock('https://api.exchangerate.host').get('/convert?from=USD&to=BRL').replyWithError('Network Error');
+    jest.spyOn(global, 'fetch').mockResolvedValue({ ok: false, status: 500 });
 
     await expect(adapter.obterTaxa('USD', 'BRL')).rejects.toThrow();
+  });
+
+  it('deve lançar erro quando a moeda de destino não vem na resposta da API', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ rates: { EUR: 0.9 } }) // sem BRL
+    });
+
+    await expect(adapter.obterTaxa('USD', 'BRL')).rejects.toThrow('Taxa não encontrada para USD/BRL');
   });
 });

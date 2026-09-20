@@ -24,4 +24,17 @@ describe('Command: CompensarDespesaCancelada', () => {
     // Verifica se o repositório foi chamado para salvar a alteração
     expect(mockRepository.atualizarEmLote).toHaveBeenCalledWith([mockDespesa]);
   });
+
+  it('não deve chamar atualizarEmLote quando nenhuma despesa é encontrada para o evento', async () => {
+    const mockRepository = {
+      buscarPorEventoId: jest.fn().mockResolvedValue([]),
+      atualizarEmLote: jest.fn().mockResolvedValue(true)
+    };
+
+    const command = new CompensarDespesaCanceladaCommand(mockRepository);
+    const resultado = await command.execute({ eventoId: 'evento-sem-despesas' });
+
+    expect(mockRepository.atualizarEmLote).not.toHaveBeenCalled();
+    expect(resultado).toEqual([]);
+  });
 });

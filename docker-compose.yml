@@ -90,6 +90,64 @@ services:
     secrets:
       - DB_PASSWORD
 
+  service-despesas:
+    build: ./service-despesas
+    ports:
+      - '3003:3003' #Por enquanto vai ter acesso público pra teste, e pq n temos o API Gateway pronto.
+    depends_on:
+      - db-despesas
+      - rabbitmq
+      - redis
+    volumes:
+      - ./service-despesas:/usr/src/app # Meu código = Código no container
+      - /usr/src/app/node_modules # node_modules do container != meu node_modules
+    env_file:
+      - ./service-despesas/.env
+    secrets:
+      - DB_PASSWORD
+
+  db-despesas:
+    image: postgres:15
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_DB: despesas_db
+      POSTGRES_USER: usuario
+      POSTGRES_PASSWORD_FILE: /run/secrets/DB_PASSWORD
+    volumes:
+      - db-despesas-data:/var/lib/postgresql/data
+      - ./service-despesas/init.sql:/docker-entrypoint-initdb.d/init.sql
+    secrets:
+      - DB_PASSWORD
+
+  service-orquestrador:
+    build: ./service-orquestrador
+    ports:
+      - '3004:3004' #Por enquanto vai ter acesso público pra teste, e pq n temos o API Gateway pronto.
+    depends_on:
+      - db-orquestrador
+      - rabbitmq
+    volumes:
+      - ./service-orquestrador:/usr/src/app # Meu código = Código no container
+      - /usr/src/app/node_modules # node_modules do container != meu node_modules
+    env_file:
+      - ./service-orquestrador/.env
+    secrets:
+      - DB_PASSWORD
+
+  db-orquestrador:
+    image: postgres:15
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_DB: orquestrador_db
+      POSTGRES_USER: usuario
+      POSTGRES_PASSWORD_FILE: /run/secrets/DB_PASSWORD
+    volumes:
+      - db-orquestrador-data:/var/lib/postgresql/data
+      - ./service-orquestrador/init.sql:/docker-entrypoint-initdb.d/init.sql
+    secrets:
+      - DB_PASSWORD
 
   pgadmin:
     # Para poder editar os bancos - demora pra inicializar
@@ -111,7 +169,15 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis-devops
+    ports:
+      - "6379:6379" # Cache do service-despesas (taxas de câmbio, dashboard)
+
 volumes:
   db-data:
   db-viagens-data:
   db-grupos-data:
+  db-despesas-data:
+  db-orquestrador-data:

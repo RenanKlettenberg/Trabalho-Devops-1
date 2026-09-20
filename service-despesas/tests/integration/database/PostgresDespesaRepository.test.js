@@ -1,17 +1,21 @@
-import { PostgresDespesaRepository } from '../../../src/infrastructure/adapters/out/database/postgres/PostgresDespesaRepository.js';
+import { PostgresDespesaRepository } from '../../../src/infrastructure/adapters/out/database/PostgresDespesaRepository.js';
 import { Despesa } from '../../../src/domain/entities/Despesa.js';
+import database from '../../../src/infrastructure/config/database.js';
 
 describe('Integração: PostgresDespesaRepository', () => {
   let repository;
 
   beforeAll(async () => {
-    // Aqui iria a lógica de conexão com o banco de testes
     repository = new PostgresDespesaRepository();
   });
 
   afterEach(async () => {
     // Limpar as tabelas após cada teste para garantir isolamento
-    // await db.query('TRUNCATE despesas;');
+    await database.query('TRUNCATE despesas.despesas;');
+  });
+
+  afterAll(async () => {
+    await database.pool.end();
   });
 
   it('deve salvar uma despesa no banco de dados e conseguir buscá-la', async () => {
@@ -35,9 +39,9 @@ describe('Integração: PostgresDespesaRepository', () => {
   });
 
   it('deve atualizar o status de múltiplas despesas em lote', async () => {
-    const despesa1 = new Despesa({ descricao: 'A', valor: 10, moeda: 'USD', categoria: 'OUTROS', viagemId: 'v-999' });
-    const despesa2 = new Despesa({ descricao: 'B', valor: 20, moeda: 'USD', categoria: 'OUTROS', viagemId: 'v-999' });
-    
+    const despesa1 = new Despesa({ descricao: 'A', valor: 10, moeda: 'USD', categoria: 'OUTROS', viagemId: 'v-999', eventoId: 'evento-999' });
+    const despesa2 = new Despesa({ descricao: 'B', valor: 20, moeda: 'USD', categoria: 'OUTROS', viagemId: 'v-999', eventoId: 'evento-999' });
+
     await repository.salvar(despesa1);
     await repository.salvar(despesa2);
 
@@ -47,7 +51,7 @@ describe('Integração: PostgresDespesaRepository', () => {
     // Ação: Atualizar em lote
     await repository.atualizarEmLote([despesa1, despesa2]);
 
-    const despesas = await repository.buscarPorEventoId('v-999');
+    const despesas = await repository.buscarPorEventoId('evento-999');
     expect(despesas[0].status).toBe('ESTORNADA');
     expect(despesas[1].status).toBe('ESTORNADA');
   });
