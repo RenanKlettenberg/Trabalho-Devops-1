@@ -5,6 +5,4 @@ const router = Router();
 
 router.post('/', controller.login);
 
-router.delete('/', controller.logoff);
-
 export default router;

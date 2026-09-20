@@ -1,3 +1,4 @@
+// service/usuario.service.js
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import AppError from "../infrastructure/errors/app.error.js";
@@ -6,7 +7,7 @@ import configJwt from '../infrastructure/config/jwt.js';
 import pepperConfig from '../infrastructure/config/pepper.js';
 
 function criarServiceUsuario(repository) {
-    async function listar(req, res) {
+    async function listar() {
         return await repository.listar();
     }
 
@@ -31,13 +32,33 @@ function criarServiceUsuario(repository) {
         return assinarToken(usuario);
     }
 
+    async function editarUsuario(dados) {
+        const usuario = await repository.getById(dados.usu_id);
+
+        if (!usuario) {
+            throw new AppError(RESPONSE.USUARIO_NAO_ENCONTRADO);
+        }
+
+        return await repository.editarUsuario(dados);
+    }
+
+    async function deletarUsuario(dados) {
+        const usuario = await repository.getById(dados.usu_id);
+
+        if (!usuario) {
+            throw new AppError(RESPONSE.USUARIO_NAO_ENCONTRADO);
+        }
+
+        return await repository.deletarUsuario(dados);
+    }
+
     function assinarToken(payload) {
         delete payload.usu_password;
         const token = jwt.sign(payload, configJwt.secret, configJwt.options)
         return { ...payload, jwt: token };
     }
 
-    return { listar, getById, criarUsuario, getByEmail }
+    return { listar, getById, getByEmail, criarUsuario, editarUsuario, deletarUsuario }
 }
 
 export default criarServiceUsuario;

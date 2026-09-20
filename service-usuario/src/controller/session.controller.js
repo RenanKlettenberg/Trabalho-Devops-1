@@ -7,16 +7,9 @@ function criarSessionController(service) {
         const data = (await service.login(body));
         
         res.json({ ...RESPONSE.SUCESSO, payload: data })
-    }
-    
-    async function logoff(req, res) {
-        const body = dto.logoffDto(req.body);
-        const data = (await service.logoff(body));
-        
-        res.json({ ...RESPONSE.SUCESSO, payload: data })
-    }
+    }    
 
-    return { login, logoff }
+    return { login }
 }
 
 export default criarSessionController;

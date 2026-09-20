@@ -23,6 +23,11 @@ const RESPONSE = Object.freeze({
         message: "Já existe um usuário cadastrado com esse e-mail!",
         status: 409
     },
+    USUARIO_NAO_ENCONTRADO: {
+        code: "USU02",
+        message: "Usuário não encontrado.",
+        status: 404
+    },
     CREDENCIAIS_INVALIDAS: {
         code: "SES01",
         message: "Login ou senha inválidos.",
