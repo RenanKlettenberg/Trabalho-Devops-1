@@ -3,12 +3,15 @@
 Gestão de grupos de viagem, participantes e divisão de custos. Participa da
 saga de registro de despesas como **passo de validação**.
 
-- Porta: `3002` — base das rotas: `/api/v1`
+- Acesso: **http://localhost:8080** (pelo API Gateway) — base das rotas: `/api/v1`
+- Porta interna: `3002`, alcançável só pelos outros containers. O serviço não
+  tem porta publicada: quem fala com o mundo de fora é o gateway.
 - Banco: `grupos_db`, schema `grupos`
 - Broker: RabbitMQ (`rabbitmq:5672`)
 
 Para subir o ambiente, testar no Postman e publicar mensagens nas filas à mão,
-ver [postman/README.md](postman/README.md).
+ver [COMO-RODAR.md](COMO-RODAR.md). A collection do Postman cobre a aplicação
+inteira e fica em [postman/](../postman/), na raiz do projeto.
 
 ---
 
@@ -93,13 +96,13 @@ fila → **Publish message**.
 Envio (`cmd_vincular_despesa_grupo`):
 
 ```json
-{ "sagaId": "teste-1", "gru_id": 1, "des_id": 500, "valor": 300 }
+{ "sagaId": "teste-1", "gru_id": 1, "des_id": "3ab18a06-d42b-4d10-ab18-1761105a51af", "valor": 300 }
 ```
 
 Compensação (`cmd_desvincular_despesa_grupo`):
 
 ```json
-{ "sagaId": "teste-1", "des_id": 500 }
+{ "sagaId": "teste-1", "des_id": "3ab18a06-d42b-4d10-ab18-1761105a51af" }
 ```
 
 Publique a compensação **duas vezes**: na segunda ela responde `SUCESSO` com
@@ -238,4 +241,4 @@ O mesmo vale para `participantes.usu_id`, que aponta para o `service-usuario`.
 
 4. **`db-grupos` não monta o `init.sql`** no `docker-compose.yml`, diferente dos
    bancos de despesas e do orquestrador. Depois de um `docker compose down -v`,
-   as tabelas precisam ser criadas à mão (comando no [postman/README.md](postman/README.md)).
+   as tabelas precisam ser criadas à mão (comando no [COMO-RODAR.md](COMO-RODAR.md)).

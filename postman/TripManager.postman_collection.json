@@ -1,32 +1,99 @@
 {
   "info": {
-    "name": "TripManager - service-grupos",
-    "description": "Collection para testar o service-grupos (porta 3002).\n\nORDEM DE USO:\n1. Rode '0. Setup > Criar usuario' UMA vez (se der erro de email duplicado, tudo bem, pule).\n2. Rode '0. Setup > Login' - o token e salvo automaticamente na variavel {{token}}.\n3. Rode '1. Grupos > Criar grupo' - o gru_id e salvo automaticamente.\n4. Rode '2. Participantes > Criar participante' 2-3 vezes.\n5. Rode '4. Divisao > Calcular divisao'.\n\nAs variaveis {{token}}, {{gru_id}}, {{par_id}} e {{dp_id}} sao preenchidas sozinhas pelos scripts da aba 'Tests'.",
+    "name": "TripManager - aplicacao completa",
+    "description": "TripManager - sistema de gestao de viagens em microsservicos.\n\nTODAS as requisicoes passam pelo API GATEWAY em http://localhost:8080.\nOs cinco microsservicos NAO tem porta publicada: so o gateway e\nalcancavel de fora. Quem decide qual servico atende cada rota e o\narquivo api-gateway/nginx.conf.\n\nQUEM ATENDE O QUE:\n  /api/v1/usuario, /api/v1/session   -> service-usuario\n  /api/v1/viagem, /api/v1/evento     -> service-viagens\n  /api/v1/grupo, /api/v1/participante,\n  /api/v1/despesa-participante       -> service-grupos\n  /api/despesas                      -> service-despesas\n  /api/sagas                         -> service-orquestrador\n\nORDEM DE USO:\n1. 0. Setup > Health do GATEWAY   (confirma que o sistema esta no ar)\n2. 0. Setup > Criar usuario       (uma vez; se der email duplicado, pule)\n3. 0. Setup > Login               (salva o token sozinho)\n4. 1. Grupos > Criar grupo        (salva o gru_id sozinho)\n5. 2. Participantes > Criar participante  (2 ou 3 vezes)\n6. 4. Divisao > Calcular divisao\n7. 5. SAGA > Registrar despesa\n\nAs variaveis {{token}}, {{gru_id}}, {{par_id}} e {{dp_id}} sao\npreenchidas sozinhas pelos scripts da aba Tests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "url_usuario", "value": "http://localhost:3000/api/v1" },
-    { "key": "url_grupos", "value": "http://localhost:3002/api/v1" },
-    { "key": "url_orquestrador", "value": "http://localhost:3004/api" },
-    { "key": "email", "value": "julia@teste.com" },
-    { "key": "senha", "value": "Senha@123" },
-    { "key": "token", "value": "" },
-    { "key": "gru_id", "value": "" },
-    { "key": "par_id", "value": "" },
-    { "key": "des_id", "value": "3ab18a06-d42b-4d10-ab18-1761105a51af" },
-    { "key": "dp_id", "value": "" },
-    { "key": "saga_id", "value": "" }
+    {
+      "key": "url_gateway",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "url_usuario",
+      "value": "http://localhost:8080/api/v1"
+    },
+    {
+      "key": "url_grupos",
+      "value": "http://localhost:8080/api/v1"
+    },
+    {
+      "key": "url_orquestrador",
+      "value": "http://localhost:8080/api"
+    },
+    {
+      "key": "email",
+      "value": "julia@teste.com"
+    },
+    {
+      "key": "senha",
+      "value": "Senha@123"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "gru_id",
+      "value": ""
+    },
+    {
+      "key": "par_id",
+      "value": ""
+    },
+    {
+      "key": "des_id",
+      "value": "3ab18a06-d42b-4d10-ab18-1761105a51af"
+    },
+    {
+      "key": "dp_id",
+      "value": ""
+    },
+    {
+      "key": "saga_id",
+      "value": ""
+    }
   ],
   "item": [
     {
-      "name": "0. Setup (service-usuario)",
+      "name": "0. Setup",
       "item": [
+        {
+          "name": "Health do GATEWAY",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_gateway}}/health",
+              "host": [
+                "{{url_gateway}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Responde o proprio API Gateway, sem consultar microsservico nenhum.\n\nSe este responde e os outros nao, o gateway esta vivo e o problema\nesta atras dele. Boa primeira requisicao de uma demonstracao."
+          }
+        },
         {
           "name": "Criar usuario",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{url_usuario}}/usuario", "host": ["{{url_usuario}}"], "path": ["usuario"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{url_usuario}}/usuario",
+              "host": [
+                "{{url_usuario}}"
+              ],
+              "path": [
+                "usuario"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"usu_nome\": \"Julia\",\n  \"usu_email\": \"{{email}}\",\n  \"usu_password\": \"{{senha}}\",\n  \"usu_plano\": \"free\"\n}"
@@ -54,8 +121,21 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{url_usuario}}/session", "host": ["{{url_usuario}}"], "path": ["session"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{url_usuario}}/session",
+              "host": [
+                "{{url_usuario}}"
+              ],
+              "path": [
+                "session"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"usu_email\": \"{{email}}\",\n  \"usu_password\": \"{{senha}}\"\n}"
@@ -68,7 +148,15 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{url_grupos}}/health", "host": ["{{url_grupos}}"], "path": ["health"] },
+            "url": {
+              "raw": "{{url_grupos}}/health",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
             "description": "Rota sem autenticacao. Se responder {status: ok}, o servico esta no ar."
           }
         }
@@ -97,11 +185,28 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
-            "url": { "raw": "{{url_grupos}}/grupo", "host": ["{{url_grupos}}"], "path": ["grupo"] },
-            "body": { "mode": "raw", "raw": "{\n  \"gru_nome\": \"Viagem Floripa\"\n}" },
+            "url": {
+              "raw": "{{url_grupos}}/grupo",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "grupo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gru_nome\": \"Viagem Floripa\"\n}"
+            },
             "description": "O dono do grupo (usu_id_dono) vem do token, nao do body. Salva o gru_id em {{gru_id}}."
           }
         },
@@ -109,8 +214,21 @@
           "name": "Listar meus grupos",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": { "raw": "{{url_grupos}}/grupo", "host": ["{{url_grupos}}"], "path": ["grupo"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{url_grupos}}/grupo",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "grupo"
+              ]
+            },
             "description": "Lista so os grupos onde o usuario logado e o dono."
           }
         },
@@ -118,8 +236,22 @@
           "name": "Buscar grupo por id",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": { "raw": "{{url_grupos}}/grupo/{{gru_id}}", "host": ["{{url_grupos}}"], "path": ["grupo", "{{gru_id}}"] }
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{url_grupos}}/grupo/{{gru_id}}",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "grupo",
+                "{{gru_id}}"
+              ]
+            }
           }
         },
         {
@@ -127,11 +259,29 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
-            "url": { "raw": "{{url_grupos}}/grupo/{{gru_id}}", "host": ["{{url_grupos}}"], "path": ["grupo", "{{gru_id}}"] },
-            "body": { "mode": "raw", "raw": "{\n  \"gru_nome\": \"Viagem Floripa 2026\"\n}" },
+            "url": {
+              "raw": "{{url_grupos}}/grupo/{{gru_id}}",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "grupo",
+                "{{gru_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gru_nome\": \"Viagem Floripa 2026\"\n}"
+            },
             "description": "So o dono do grupo consegue editar. Com o token de outro usuario, retorna 403 (SEM_PERMISSAO).\n\nOs DELETEs ficam na pasta '7. Limpeza', no fim da collection, porque precisam rodar numa ordem especifica."
           }
         }
@@ -159,10 +309,24 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
-            "url": { "raw": "{{url_grupos}}/participante", "host": ["{{url_grupos}}"], "path": ["participante"] },
+            "url": {
+              "raw": "{{url_grupos}}/participante",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "participante"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"gru_id\": {{gru_id}},\n  \"par_nome\": \"Renan\",\n  \"par_isento\": false\n}"
@@ -175,10 +339,24 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
-            "url": { "raw": "{{url_grupos}}/participante", "host": ["{{url_grupos}}"], "path": ["participante"] },
+            "url": {
+              "raw": "{{url_grupos}}/participante",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "participante"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"gru_id\": {{gru_id}},\n  \"par_nome\": \"Crianca (nao paga)\",\n  \"par_isento\": true\n}"
@@ -190,11 +368,22 @@
           "name": "Listar participantes do grupo",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{url_grupos}}/participante/grupo/{{gru_id}}",
-              "host": ["{{url_grupos}}"],
-              "path": ["participante", "grupo", "{{gru_id}}"]
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "participante",
+                "grupo",
+                "{{gru_id}}"
+              ]
             }
           }
         },
@@ -203,15 +392,29 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{url_grupos}}/participante/{{par_id}}",
-              "host": ["{{url_grupos}}"],
-              "path": ["participante", "{{par_id}}"]
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "participante",
+                "{{par_id}}"
+              ]
             },
-            "body": { "mode": "raw", "raw": "{\n  \"par_nome\": \"Renan Klettenberg\",\n  \"par_isento\": false\n}" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"par_nome\": \"Renan Klettenberg\",\n  \"par_isento\": false\n}"
+            },
             "description": "Edita o ultimo participante criado ({{par_id}}). Para editar outro, troque o id na URL."
           }
         }
@@ -239,13 +442,23 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{url_grupos}}/despesa-participante",
-              "host": ["{{url_grupos}}"],
-              "path": ["despesa-participante"]
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "despesa-participante"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -258,11 +471,22 @@
           "name": "Listar vinculos de uma despesa",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{url_grupos}}/despesa-participante/despesa/{{des_id}}",
-              "host": ["{{url_grupos}}"],
-              "path": ["despesa-participante", "despesa", "{{des_id}}"]
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "despesa-participante",
+                "despesa",
+                "{{des_id}}"
+              ]
             },
             "description": "Mostra todos os participantes vinculados aquela despesa, com peso e flag de exclusividade."
           }
@@ -277,15 +501,32 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{url_grupos}}/grupo/{{gru_id}}/despesa/{{des_id}}/divisao",
-              "host": ["{{url_grupos}}"],
-              "path": ["grupo", "{{gru_id}}", "despesa", "{{des_id}}", "divisao"]
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "grupo",
+                "{{gru_id}}",
+                "despesa",
+                "{{des_id}}",
+                "divisao"
+              ]
             },
-            "body": { "mode": "raw", "raw": "{\n  \"valor\": 300\n}" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"valor\": 300\n}"
+            },
             "description": "ESTA E A ROTA PRINCIPAL DO SERVICO.\n\nRegras aplicadas, nesta ordem:\n1. Se existe algum vinculo com dp_exclusiva=true, SO os exclusivos dividem.\n2. Senao, dividem todos os participantes nao isentos.\n3. O valor e rateado proporcionalmente ao dp_peso (padrao 1).\n\nExemplo: 300 reais, Julia peso 1 e Renan peso 2 => Julia 100, Renan 200.\n\nO calculo NAO e gravado no banco: e so leitura, retorna quanto cada um deve."
           }
         }
@@ -311,11 +552,21 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{url_orquestrador}}/sagas/despesas",
-              "host": ["{{url_orquestrador}}"],
-              "path": ["sagas", "despesas"]
+              "host": [
+                "{{url_orquestrador}}"
+              ],
+              "path": [
+                "sagas",
+                "despesas"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -328,11 +579,21 @@
           "name": "Registrar despesa - grupo INEXISTENTE (falha)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{url_orquestrador}}/sagas/despesas",
-              "host": ["{{url_orquestrador}}"],
-              "path": ["sagas", "despesas"]
+              "host": [
+                "{{url_orquestrador}}"
+              ],
+              "path": [
+                "sagas",
+                "despesas"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -348,8 +609,13 @@
             "header": [],
             "url": {
               "raw": "{{url_orquestrador}}/sagas/{{saga_id}}",
-              "host": ["{{url_orquestrador}}"],
-              "path": ["sagas", "{{saga_id}}"]
+              "host": [
+                "{{url_orquestrador}}"
+              ],
+              "path": [
+                "sagas",
+                "{{saga_id}}"
+              ]
             },
             "description": "Mostra o historico da saga gravado no banco do orquestrador."
           }
@@ -364,7 +630,15 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{url_grupos}}/grupo", "host": ["{{url_grupos}}"], "path": ["grupo"] },
+            "url": {
+              "raw": "{{url_grupos}}/grupo",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "grupo"
+              ]
+            },
             "description": "Esperado: 401, code SES02 'Faca login para poder continuar.'"
           }
         },
@@ -372,8 +646,21 @@
           "name": "Token invalido (401)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer token_qualquer_invalido" }],
-            "url": { "raw": "{{url_grupos}}/grupo", "host": ["{{url_grupos}}"], "path": ["grupo"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer token_qualquer_invalido"
+              }
+            ],
+            "url": {
+              "raw": "{{url_grupos}}/grupo",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "grupo"
+              ]
+            },
             "description": "Esperado: 401, code SES03 'Token invalido.'"
           }
         },
@@ -381,8 +668,22 @@
           "name": "Grupo inexistente (404)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": { "raw": "{{url_grupos}}/grupo/99999", "host": ["{{url_grupos}}"], "path": ["grupo", "99999"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{url_grupos}}/grupo/99999",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "grupo",
+                "99999"
+              ]
+            },
             "description": "Esperado: 404, code GRU03 'Grupo nao encontrado.'"
           }
         },
@@ -391,11 +692,28 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
-            "url": { "raw": "{{url_grupos}}/grupo", "host": ["{{url_grupos}}"], "path": ["grupo"] },
-            "body": { "mode": "raw", "raw": "{\n  \"gru_nome\": \"\"\n}" },
+            "url": {
+              "raw": "{{url_grupos}}/grupo",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "grupo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gru_nome\": \"\"\n}"
+            },
             "description": "Nome vazio e barrado pelo Zod (src/dto/grupo.dto.js). Esperado: 400, code 2."
           }
         }
@@ -409,11 +727,21 @@
           "name": "1) Deletar vinculo",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{url_grupos}}/despesa-participante/{{dp_id}}",
-              "host": ["{{url_grupos}}"],
-              "path": ["despesa-participante", "{{dp_id}}"]
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "despesa-participante",
+                "{{dp_id}}"
+              ]
             },
             "description": "Remove o vinculo despesa-participante criado na pasta 3."
           }
@@ -422,11 +750,21 @@
           "name": "2) Deletar participante",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{url_grupos}}/participante/{{par_id}}",
-              "host": ["{{url_grupos}}"],
-              "path": ["participante", "{{par_id}}"]
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "participante",
+                "{{par_id}}"
+              ]
             },
             "description": "Deleta UM participante ({{par_id}}). Se voce criou varios, repita trocando o id na URL ate o grupo ficar vazio."
           }
@@ -435,8 +773,22 @@
           "name": "3) Deletar grupo",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": { "raw": "{{url_grupos}}/grupo/{{gru_id}}", "host": ["{{url_grupos}}"], "path": ["grupo", "{{gru_id}}"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{url_grupos}}/grupo/{{gru_id}}",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "grupo",
+                "{{gru_id}}"
+              ]
+            },
             "description": "So funciona com o grupo ja sem participantes.\n\nSe ainda houver algum, a resposta e 500 com a mensagem crua do Postgres:\n'violates foreign key constraint fk_participantes_gru_id'.\n\n(Isso e um comportamento conhecido do servico, nao um erro seu de uso.)"
           }
         }

@@ -10,6 +10,10 @@ Para entender **o que** o serviço faz e seu papel na saga, ver o
 (`Trabalho-Devops-1`, a pasta que tem o `docker-compose.yml`) — não dentro de
 `service-grupos`. Onde o PowerShell difere, está anotado.
 
+> ⚠️ **Tudo passa pelo API Gateway, na porta 8080.** Os microsserviços não têm
+> porta publicada: `localhost:3002` e companhia **não respondem mais**. Isso é
+> proposital — ver "O API Gateway" logo abaixo.
+
 ---
 
 ## Resumo rápido
@@ -68,6 +72,48 @@ copy service-orquestrador\.env.example service-orquestrador\.env
 
 ---
 
+## O API Gateway
+
+Toda requisição entra por **http://localhost:8080**. Quem decide qual
+microsserviço atende cada rota é o [api-gateway/nginx.conf](../api-gateway/nginx.conf),
+por prefixo de caminho:
+
+| Caminho | Vai para |
+| :--- | :--- |
+| `/api/v1/usuario`, `/api/v1/session` | service-usuario |
+| `/api/v1/viagem`, `/api/v1/evento` | service-viagens |
+| `/api/v1/grupo`, `/api/v1/participante`, `/api/v1/despesa-participante` | **service-grupos** |
+| `/api/despesas` | service-despesas |
+| `/api/sagas` | service-orquestrador |
+| `/health` | o próprio gateway, sem consultar ninguém |
+
+Os cinco microsserviços **não têm porta publicada** no `docker-compose.yml`.
+Eles continuam se enxergando pela rede interna do Docker (pelo nome do
+container), mas da sua máquina só o gateway é alcançável. É o padrão API
+Gateway implementado de verdade, não apenas instalado.
+
+Para editar o roteamento, mude o `nginx.conf` e recarregue:
+
+```cmd
+docker compose restart api-gateway
+```
+
+Para conferir a sintaxe antes de reiniciar (o Nginx recusa subir com config
+inválida):
+
+```cmd
+docker exec api-gateway nginx -t
+```
+
+O log do gateway mostra **todas** as requisições que entram no sistema, num
+lugar só — útil para acompanhar uma demonstração ao vivo:
+
+```cmd
+docker compose logs -f api-gateway
+```
+
+---
+
 ## Passo 1 — Derrubar o que estiver no ar
 
 ```cmd
@@ -93,13 +139,14 @@ sozinho preserva seus dados de teste.
 docker compose up --build -d
 ```
 
-- `up` — cria e inicia todos os serviços do `docker-compose.yml`. São 13: cinco
+- `up` — cria e inicia todos os serviços do `docker-compose.yml`. São 14: o
+  gateway, cinco
   microsserviços, cinco bancos Postgres, RabbitMQ, Redis e pgAdmin.
 - `--build` — reconstrói as imagens a partir dos `Dockerfile`. Necessário na
   primeira vez e quando mudar `package.json` ou `Dockerfile`. **Mudança em
   arquivo `.js` não precisa** (ver "Editar código" no fim).
 - `-d` — *detached*: roda em segundo plano e devolve o terminal. Sem o `-d`, o
-  log dos 13 containers toma a tela e `Ctrl+C` derruba tudo.
+  log dos 14 containers toma a tela e `Ctrl+C` derruba tudo.
 
 A primeira vez demora alguns minutos: baixa as imagens e roda `npm install` em
 cada microsserviço.
@@ -114,7 +161,7 @@ cada microsserviço.
 docker compose ps
 ```
 
-13 containers `Up`, e o `rabbitmq-devops` com `Up (healthy)`.
+14 containers `Up`, e o `rabbitmq-devops` com `Up (healthy)`.
 
 > ⚠️ **`Up` não quer dizer "funcionando".** Ver a seção de erros — o container
 > pode estar de pé com a aplicação morta por dentro.
@@ -145,13 +192,28 @@ docker compose logs --tail 5 service-orquestrador
 Esperado: `Conectado ao RabbitMQ.` e `Servidor rodando na porta 3004`. Se
 aparecer `app crashed`, ver a seção de erros.
 
-### 3.4 A API responde
+### 3.4 O gateway responde
 
 ```cmd
-curl http://localhost:3002/api/v1/health
+curl http://localhost:8080/health
+```
+
+Esperado: `{"status":"ok","service":"api-gateway"}`
+
+Esse endereço é respondido pelo **próprio gateway**, sem consultar
+microsserviço nenhum. Se ele funciona e os outros não, o gateway está vivo e o
+problema está atrás dele.
+
+### 3.5 O seu serviço responde através do gateway
+
+```cmd
+curl http://localhost:8080/api/v1/health
 ```
 
 Esperado: `{"status":"ok","service":"service-grupos"}`
+
+Repare: você chamou a porta 8080, mas quem respondeu foi o service-grupos. O
+gateway roteou.
 
 ---
 
@@ -197,18 +259,18 @@ Todas as rotas do service-grupos exigem um JWT válido. O login fica no
 `service-usuario`, na porta 3000.
 
 Pelo **Postman** (recomendado): importe
-`service-grupos.postman_collection.json`, rode **0. Setup → Criar usuário** e
+`postman/TripManager.postman_collection.json` (na raiz do projeto), rode **0. Setup → Criar usuário** e
 depois **0. Setup → Login**. O token é salvo sozinho na variável `{{token}}` e
 todas as outras requisições já vão autenticadas.
 
 Pelo terminal:
 
 ```cmd
-curl -X POST http://localhost:3000/api/v1/usuario -H "Content-Type: application/json" -d "{\"usu_nome\":\"Julia\",\"usu_email\":\"julia@teste.com\",\"usu_password\":\"Senha@123\",\"usu_plano\":\"free\"}"
+curl -X POST http://localhost:8080/api/v1/usuario -H "Content-Type: application/json" -d "{\"usu_nome\":\"Julia\",\"usu_email\":\"julia@teste.com\",\"usu_password\":\"Senha@123\",\"usu_plano\":\"free\"}"
 ```
 
 ```cmd
-curl -X POST http://localhost:3000/api/v1/session -H "Content-Type: application/json" -d "{\"usu_email\":\"julia@teste.com\",\"usu_password\":\"Senha@123\"}"
+curl -X POST http://localhost:8080/api/v1/session -H "Content-Type: application/json" -d "{\"usu_email\":\"julia@teste.com\",\"usu_password\":\"Senha@123\"}"
 ```
 
 A senha precisa ter 8+ caracteres, uma letra, um número e um caractere especial.
@@ -249,7 +311,7 @@ o participante isento fora da conta.
 Pasta **5. SAGA** do Postman, ou direto:
 
 ```cmd
-curl -X POST http://localhost:3004/api/sagas/despesas -H "Content-Type: application/json" -d "{\"descricao\":\"Hotel\",\"valor\":300,\"moeda\":\"BRL\",\"categoria\":\"hospedagem\",\"viagemId\":1,\"gruId\":1}"
+curl -X POST http://localhost:8080/api/sagas/despesas -H "Content-Type: application/json" -d "{\"descricao\":\"Hotel\",\"valor\":300,\"moeda\":\"BRL\",\"categoria\":\"hospedagem\",\"viagemId\":1,\"gruId\":1}"
 ```
 
 O que acontece:
@@ -334,7 +396,7 @@ docker exec trabalho-devops-1-service-grupos-1 npm test
 docker exec trabalho-devops-1-service-grupos-1 npm run test:coverage
 ```
 
-São **71 testes** em 9 arquivos:
+São **73 testes** em 9 arquivos:
 
 - **Unitários** (`src/tests/unit/`) — usam um channel falso do RabbitMQ. Testam
   toda a mensageria sem broker rodando.
@@ -348,11 +410,13 @@ São **71 testes** em 9 arquivos:
 
 | O quê | Onde |
 | :--- | :--- |
-| service-grupos | http://localhost:3002/api/v1 |
-| service-usuario (login) | http://localhost:3000/api/v1 |
-| service-viagens | http://localhost:3001 |
-| service-despesas | http://localhost:3003 |
-| service-orquestrador (saga) | http://localhost:3004/api |
+| **API Gateway (unica entrada)** | **http://localhost:8080** |
+| Saude do gateway | http://localhost:8080/health |
+| service-usuario (login) | http://localhost:8080/api/v1/usuario, /session |
+| service-viagens | http://localhost:8080/api/v1/viagem, /evento |
+| service-grupos | http://localhost:8080/api/v1/grupo, /participante, /despesa-participante |
+| service-despesas | http://localhost:8080/api/despesas |
+| service-orquestrador (saga) | http://localhost:8080/api/sagas |
 | Painel do RabbitMQ | http://localhost:15672 (guest / guest) |
 | pgAdmin | http://localhost:5050 (admin@admin.com / 123456) |
 | Postgres do grupos | localhost:5434 |
@@ -376,7 +440,7 @@ e o container segue `Up` com a aplicação morta.
 
 ### O `service-orquestrador` fica `Up` mas não responde
 
-**Sintoma:** chamadas para `localhost:3004` não respondem. No log:
+**Sintoma:** chamadas para `localhost:8080/api/sagas` devolvem 502. No log:
 
 ```
 [service-orquestrador] Falha ao iniciar: Error: connect ECONNREFUSED ...:5672
@@ -431,9 +495,52 @@ Depois disso a saga volta a responder em ~0,15s com `CONCLUIDA`.
 
 ---
 
+### `502 Bad Gateway` em alguma rota
+
+**Sintoma:** o `curl http://localhost:8080/health` funciona, mas uma rota
+específica devolve `502`.
+
+**Causa:** o Nginx está de pé, mas não conseguiu falar com o microsserviço
+daquela rota — ele está parado, ou morreu por dentro.
+
+**Como confirmar:** descubra de quem é a rota na tabela da seção "O API
+Gateway" e veja o serviço:
+
+```cmd
+docker compose ps
+docker compose logs --tail 20 service-despesas
+```
+
+**Conserto:** `docker compose up -d <servico>`.
+
+---
+
+### `Rota nao encontrada no API Gateway` (404)
+
+**Sintoma:** resposta `{"erro":"Rota nao encontrada no API Gateway"}`.
+
+**Causa:** essa mensagem é **do gateway**, não de um serviço. O caminho que você
+chamou não casa com nenhum `location` do `nginx.conf`.
+
+**Conserto:** confira o caminho na tabela da seção "O API Gateway". Erro comum é
+esquecer o `/v1` (`/api/grupo` em vez de `/api/v1/grupo`).
+
+---
+
+### As portas 3000-3004 não respondem mais
+
+**Isso é esperado.** As portas dos microsserviços foram fechadas no
+`docker-compose.yml` de propósito, para que o API Gateway seja a única entrada.
+Use `http://localhost:8080` com o caminho da tabela.
+
+Se precisar mesmo acessar um serviço direto para depurar, devolva o bloco
+`ports:` dele no `docker-compose.yml` e rode `docker compose up -d <servico>`.
+
+---
+
 ### `[service-grupos] Saga desativada, não foi possível conectar no RabbitMQ`
 
-**Sintoma:** a API na porta 3002 funciona, mas nada acontece quando o
+**Sintoma:** a API (via gateway) funciona, mas nada acontece quando o
 orquestrador publica nas filas.
 
 **Causa:** o serviço subiu junto com o broker e esgotou as 20 tentativas (60s)
@@ -545,7 +652,7 @@ Antes de pedir ajuda, rode e guarde a saída:
 docker compose ps
 docker compose logs --tail 20 service-grupos
 docker compose logs --tail 20 service-orquestrador
-curl http://localhost:3002/api/v1/health
+curl http://localhost:8080/api/v1/health
 ```
 
 ---
