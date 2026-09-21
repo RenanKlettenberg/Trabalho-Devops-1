@@ -1,6 +1,8 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import criarConsumerSaga, { FILAS } from '../../consumer/saga.consumer.js';
 
+const DES_ID = '3ab18a06-d42b-4d10-ab18-1761105a51af'; // UUID vindo do service-despesas
+
 /*
   Um canal falso do RabbitMQ. Com ele dá para testar todo o comportamento de
   mensageria (o que é respondido, para qual fila, quando dá ack ou nack) sem
@@ -62,8 +64,6 @@ describe('saga.consumer', () => {
                 FILAS.CMD_VINCULAR,
                 FILAS.CMD_DESVINCULAR,
                 FILAS.EVENTOS_DESPESA,
-                FILAS.EVENTOS_VIAGEM,
-                FILAS.EVENTOS_USUARIO,
             ]);
         });
     });
@@ -114,7 +114,7 @@ describe('saga.consumer', () => {
 
     describe('tratarVincular', () => {
         it('chama o service com o payload e responde SUCESSO', async () => {
-            const comando = { sagaId: 'saga-1', gru_id: 1, des_id: 42, valor: 300 };
+            const comando = { sagaId: 'saga-1', gru_id: 1, des_id: DES_ID, valor: 300 };
             sagaService.vincularDespesa.mockResolvedValue({ divisao: [], vinculos: 2 });
 
             await consumer.tratarVincular(criarMensagem(comando));
@@ -190,11 +190,11 @@ describe('saga.consumer', () => {
 
     describe('tratarDesvincular', () => {
         it('executa a compensação e responde na fila de resposta correspondente', async () => {
-            sagaService.desvincularDespesa.mockResolvedValue({ des_id: 42, vinculosRemovidos: 2 });
+            sagaService.desvincularDespesa.mockResolvedValue({ des_id: DES_ID, vinculosRemovidos: 2 });
 
-            await consumer.tratarDesvincular(criarMensagem({ sagaId: 'saga-1', des_id: 42 }));
+            await consumer.tratarDesvincular(criarMensagem({ sagaId: 'saga-1', des_id: DES_ID }));
 
-            expect(sagaService.desvincularDespesa).toHaveBeenCalledWith({ sagaId: 'saga-1', des_id: 42 });
+            expect(sagaService.desvincularDespesa).toHaveBeenCalledWith({ sagaId: 'saga-1', des_id: DES_ID });
 
             const { fila, mensagem } = lerEnvio(channel);
             expect(fila).toBe(FILAS.RESPOSTA_DESVINCULAR);
@@ -209,11 +209,11 @@ describe('saga.consumer', () => {
 
     describe('tratarEvento', () => {
         it('limpa os vínculos ao receber DESPESA_CANCELADA', async () => {
-            sagaService.desvincularDespesa.mockResolvedValue({ des_id: 42, vinculosRemovidos: 2 });
+            sagaService.desvincularDespesa.mockResolvedValue({ des_id: DES_ID, vinculosRemovidos: 2 });
 
-            await consumer.tratarEvento(criarMensagem({ evento: 'DESPESA_CANCELADA', des_id: 42 }));
+            await consumer.tratarEvento(criarMensagem({ evento: 'DESPESA_CANCELADA', des_id: DES_ID }));
 
-            expect(sagaService.desvincularDespesa).toHaveBeenCalledWith({ des_id: 42 });
+            expect(sagaService.desvincularDespesa).toHaveBeenCalledWith({ des_id: DES_ID });
             expect(channel.ack).toHaveBeenCalledTimes(1);
         });
 
@@ -225,9 +225,9 @@ describe('saga.consumer', () => {
         });
 
         it('não responde nada: evento é via de mão única', async () => {
-            sagaService.desvincularDespesa.mockResolvedValue({ des_id: 42, vinculosRemovidos: 2 });
+            sagaService.desvincularDespesa.mockResolvedValue({ des_id: DES_ID, vinculosRemovidos: 2 });
 
-            await consumer.tratarEvento(criarMensagem({ evento: 'DESPESA_CANCELADA', des_id: 42 }));
+            await consumer.tratarEvento(criarMensagem({ evento: 'DESPESA_CANCELADA', des_id: DES_ID }));
 
             expect(channel.sendToQueue).not.toHaveBeenCalled();
         });
@@ -235,7 +235,7 @@ describe('saga.consumer', () => {
         it('dá ack mesmo se o tratamento do evento explodir, para não reprocessar em loop', async () => {
             sagaService.desvincularDespesa.mockRejectedValue(new Error('banco fora do ar'));
 
-            await consumer.tratarEvento(criarMensagem({ evento: 'DESPESA_CANCELADA', des_id: 42 }));
+            await consumer.tratarEvento(criarMensagem({ evento: 'DESPESA_CANCELADA', des_id: DES_ID }));
 
             expect(channel.ack).toHaveBeenCalledTimes(1);
         });

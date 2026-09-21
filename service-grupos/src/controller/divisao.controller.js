@@ -6,7 +6,7 @@ function criarControllerDivisao(service) {
         const body = calcularDivisaoDto(req.body);
         const data = await service.calcularDivisaoDespesa({
             gru_id: Number(req.params.gruId),
-            des_id: Number(req.params.desId),
+            des_id: req.params.desId, // UUID do service-despesas, não converter para número
             valor: body.valor,
         });
         res.json({ ...RESPONSE.SUCESSO, payload: data });

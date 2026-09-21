@@ -11,13 +11,38 @@
     - `service_quemEnvia/quemRecebe` -> evento avulso entre dois serviços.
 */
 
+/*
+  ATIVO vs SOBREAVISO — leia antes de mexer aqui.
+
+  Nem toda fila deste arquivo tem alguém do outro lado hoje. Isso é
+  intencional, não é implementação pela metade. Ver README.md do serviço.
+
+    ATIVO       cmd_validar_grupo               o orquestrador chama a cada
+                                                POST /api/sagas/despesas com gruId
+
+    SOBREAVISO  cmd_vincular_despesa_grupo      passo de ESCRITA: implementado e
+                                                testado, aguardando ser incluído
+                                                em RegistrarDespesaSaga.passos()
+
+    SOBREAVISO  cmd_desvincular_despesa_grupo   COMPENSAÇÃO do passo acima.
+                                                Idempotente de propósito
+
+    SOBREAVISO  service_despesa/grupos          evento DESPESA_CANCELADA; hoje o
+                                                service-despesas não o publica
+
+  As duas de SOBREAVISO ligadas a comando existem porque o contrato atual põe
+  o service-grupos como passo de validação (só leitura), e passo de leitura não
+  precisa de compensação. No dia em que a saga ganhar um passo que escreve no
+  grupos, a compensação já está pronta. Para exercitá-las agora, publique na
+  fila pelo painel do RabbitMQ (localhost:15672) — ver README.md.
+*/
 export const FILAS = Object.freeze({
-    // Passo de validação da saga (antes da despesa existir) — contrato combinado
-    // com o service-orquestrador, ver ExemploSaga/README.md dele.
+    // ATIVO — passo de validação da saga (antes da despesa existir), contrato
+    // combinado com o service-orquestrador, ver ExemploSaga/README.md dele.
     CMD_VALIDAR: 'cmd_validar_grupo',
     RESPOSTA_VALIDAR: 'resposta_validar_grupo',
 
-    // Comandos que o orquestrador envia para o service-grupos
+    // SOBREAVISO — comandos de escrita/compensação, sem chamador hoje
     CMD_VINCULAR: 'cmd_vincular_despesa_grupo',
     CMD_DESVINCULAR: 'cmd_desvincular_despesa_grupo',
 
@@ -25,10 +50,9 @@ export const FILAS = Object.freeze({
     RESPOSTA_VINCULAR: 'resposta_vincular_despesa_grupo',
     RESPOSTA_DESVINCULAR: 'resposta_desvincular_despesa_grupo',
 
-    // Eventos que outros serviços publicam para o grupos (padrão Event-Driven)
+    // SOBREAVISO — evento que o service-despesas publicaria ao cancelar uma
+    // despesa (padrão Event-Driven, sem resposta). Hoje ele não publica.
     EVENTOS_DESPESA: 'service_despesa/grupos',
-    EVENTOS_VIAGEM: 'service_viagem/grupos',
-    EVENTOS_USUARIO: 'service_usuario/grupos',
 });
 
 function criarConsumerSaga({ channel, sagaService }) {
@@ -181,8 +205,6 @@ function criarConsumerSaga({ channel, sagaService }) {
         await channel.consume(FILAS.CMD_VINCULAR, tratarVincular);
         await channel.consume(FILAS.CMD_DESVINCULAR, tratarDesvincular);
         await channel.consume(FILAS.EVENTOS_DESPESA, tratarEvento);
-        await channel.consume(FILAS.EVENTOS_VIAGEM, tratarEvento);
-        await channel.consume(FILAS.EVENTOS_USUARIO, tratarEvento);
 
         console.log('[service-grupos] Consumer da saga ativo.');
         return channel;

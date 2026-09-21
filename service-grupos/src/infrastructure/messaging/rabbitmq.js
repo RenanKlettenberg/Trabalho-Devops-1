@@ -63,46 +63,4 @@ async function conectarRabbitMQ({ tentativas = 20, intervaloMs = 3000 } = {}) {
     throw ultimoErro;
 }
 
-/*
-  `durable: true` faz a fila sobreviver a um restart do broker. Combinado com
-  `persistent: true` na publicação, a mensagem não se perde se o RabbitMQ cair
-  antes de alguém consumir.
-*/
-async function declararFilas(filas) {
-    const canal = await conectarRabbitMQ();
-
-    for (const fila of filas) {
-        await canal.assertQueue(fila, { durable: true });
-    }
-
-    return canal;
-}
-
-async function publicarEmFila(fila, mensagem, opcoes = {}) {
-    const canal = await conectarRabbitMQ();
-
-    await canal.assertQueue(fila, { durable: true });
-
-    return canal.sendToQueue(fila, Buffer.from(JSON.stringify(mensagem)), {
-        persistent: true,
-        ...opcoes,
-    });
-}
-
-async function fecharConexao() {
-    if (channel) {
-        await channel.close();
-        channel = null;
-    }
-
-    if (connection) {
-        await connection.close();
-        connection = null;
-    }
-}
-
-function getChannel() {
-    return channel;
-}
-
-export { conectarRabbitMQ, declararFilas, publicarEmFila, fecharConexao, getChannel };
+export { conectarRabbitMQ };

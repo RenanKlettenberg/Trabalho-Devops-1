@@ -1,7 +1,9 @@
 import z from 'zod';
 
 const criarSchema = z.object({
-    des_id: z.number().int().positive(),
+    // O des_id é o UUID gerado pelo service-despesas. Não é um número nosso:
+    // é a referência externa para um dado que pertence a outro serviço.
+    des_id: z.uuid(),
     par_id: z.number().int().positive(),
     dp_exclusiva: z.boolean().optional().default(false),
     dp_peso: z.number().positive().optional(),

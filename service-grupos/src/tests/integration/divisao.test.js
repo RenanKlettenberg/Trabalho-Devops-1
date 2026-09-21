@@ -3,6 +3,17 @@ import request from 'supertest';
 import app from '../../app.js';
 import pool from '../../infrastructure/database/connection.js';
 import gerarToken from '../utils/token.util.js';
+import { randomUUID } from 'crypto';
+
+// Duas despesas distintas. São UUIDs porque o des_id é a referência externa
+// para uma despesa do service-despesas, que identifica as dela por UUID.
+//
+// Geradas a cada execução de propósito: estes testes rodam contra um banco de
+// desenvolvimento que não é limpo entre execuções. Com um id fixo, os vínculos
+// de uma execução sobrariam para a próxima, e a divisão passaria a enxergar
+// participantes de grupos antigos.
+const DES_SEM_VINCULO = randomUUID();
+const DES_EXCLUSIVA = randomUUID();
 
 describe('Divisão de despesa - integração ponta a ponta', () => {
     let token;
@@ -39,7 +50,7 @@ describe('Divisão de despesa - integração ponta a ponta', () => {
 
     it('sem nenhum vínculo, divide igualmente entre os participantes do grupo', async () => {
         const res = await request(app)
-            .post(`/api/v1/grupo/${gru_id}/despesa/1/divisao`)
+            .post(`/api/v1/grupo/${gru_id}/despesa/${DES_SEM_VINCULO}/divisao`)
             .set('Authorization', `Bearer ${token}`)
             .send({ valor: 100 });
 
@@ -56,10 +67,10 @@ describe('Divisão de despesa - integração ponta a ponta', () => {
         await request(app)
             .post('/api/v1/despesa-participante')
             .set('Authorization', `Bearer ${token}`)
-            .send({ des_id: 2, par_id: par_id_1, dp_exclusiva: true });
+            .send({ des_id: DES_EXCLUSIVA, par_id: par_id_1, dp_exclusiva: true });
 
         const res = await request(app)
-            .post(`/api/v1/grupo/${gru_id}/despesa/2/divisao`)
+            .post(`/api/v1/grupo/${gru_id}/despesa/${DES_EXCLUSIVA}/divisao`)
             .set('Authorization', `Bearer ${token}`)
             .send({ valor: 80 });
 

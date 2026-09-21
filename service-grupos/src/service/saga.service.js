@@ -79,7 +79,7 @@ function criarServiceSaga({
       compensação precisa poder rodar mais de uma vez sem quebrar.
     */
     async function desvincularDespesa({ des_id }) {
-        if (!Number.isFinite(Number(des_id))) {
+        if (!ehUuid(des_id)) {
             throw new AppError({ ...RESPONSE.DADO_INVALIDO, message: 'des_id é obrigatório.' });
         }
 
@@ -88,12 +88,22 @@ function criarServiceSaga({
         return { des_id, vinculosRemovidos: resultado.rowCount ?? 0 };
     }
 
+    /*
+      O des_id não é um id nosso: é o UUID que o service-despesas gerou. Por
+      isso a checagem é de formato UUID, e não de número — se alguém mandar
+      um inteiro aqui, é sinal de que está usando uma despesa que não existe.
+    */
+    function ehUuid(valor) {
+        return typeof valor === 'string'
+            && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor);
+    }
+
     function validarComando({ gru_id, des_id, valor }) {
         if (!Number.isFinite(Number(gru_id))) {
             throw new AppError({ ...RESPONSE.DADO_INVALIDO, message: 'gru_id é obrigatório.' });
         }
 
-        if (!Number.isFinite(Number(des_id))) {
+        if (!ehUuid(des_id)) {
             throw new AppError({ ...RESPONSE.DADO_INVALIDO, message: 'des_id é obrigatório.' });
         }
 

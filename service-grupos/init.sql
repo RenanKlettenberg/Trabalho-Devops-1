@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS grupos.participantes (
 -- Vínculo entre uma despesa (de outro serviço) e um participante (Requisito 3)
 CREATE TABLE IF NOT EXISTS grupos.despesa_participante (
 	dp_id SERIAL NOT NULL,
-	des_id INT NOT NULL,           
+	des_id UUID NOT NULL,          -- UUID gerado pelo service-despesas (outro banco, sem FK possível)
 	par_id INT NOT NULL,
 	dp_exclusiva BOOLEAN NOT NULL DEFAULT false,    
 	dp_peso DECIMAL(10,2),                          

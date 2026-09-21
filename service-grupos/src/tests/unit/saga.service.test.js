@@ -1,6 +1,8 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import criarServiceSaga from '../../service/saga.service.js';
 
+const DES_ID = '3ab18a06-d42b-4d10-ab18-1761105a51af'; // UUID vindo do service-despesas
+
 function criarDependenciasFake() {
     return {
         grupoService: {
@@ -76,9 +78,9 @@ describe('saga.service', () => {
 
     describe('vincularDespesa', () => {
         it('vincula todos os participantes não isentos quando o comando não informa a lista', async () => {
-            await service.vincularDespesa({ gru_id: 1, des_id: 42, valor: 300 });
+            await service.vincularDespesa({ gru_id: 1, des_id: DES_ID, valor: 300 });
 
-            expect(deps.despesaParticipanteRepository.criarVinculosEmLote).toHaveBeenCalledWith(42, [
+            expect(deps.despesaParticipanteRepository.criarVinculosEmLote).toHaveBeenCalledWith(DES_ID, [
                 { par_id: 1, dp_exclusiva: false, dp_peso: 1 },
                 { par_id: 2, dp_exclusiva: false, dp_peso: 1 },
             ]);
@@ -87,12 +89,12 @@ describe('saga.service', () => {
         it('respeita a lista de participantes enviada pelo orquestrador, com peso e exclusividade', async () => {
             await service.vincularDespesa({
                 gru_id: 1,
-                des_id: 42,
+                des_id: DES_ID,
                 valor: 300,
                 participantes: [{ par_id: 2, dp_exclusiva: true, dp_peso: 3 }],
             });
 
-            expect(deps.despesaParticipanteRepository.criarVinculosEmLote).toHaveBeenCalledWith(42, [
+            expect(deps.despesaParticipanteRepository.criarVinculosEmLote).toHaveBeenCalledWith(DES_ID, [
                 { par_id: 2, dp_exclusiva: true, dp_peso: 3 },
             ]);
         });
@@ -101,7 +103,7 @@ describe('saga.service', () => {
             await expect(
                 service.vincularDespesa({
                     gru_id: 1,
-                    des_id: 42,
+                    des_id: DES_ID,
                     valor: 300,
                     participantes: [{ par_id: 999 }],
                 })
@@ -116,7 +118,7 @@ describe('saga.service', () => {
             );
 
             await expect(
-                service.vincularDespesa({ gru_id: 999, des_id: 42, valor: 300 })
+                service.vincularDespesa({ gru_id: 999, des_id: DES_ID, valor: 300 })
             ).rejects.toMatchObject({ code: 'GRU03' });
         });
 
@@ -124,7 +126,7 @@ describe('saga.service', () => {
             deps.participanteRepository.listarPorGrupo.mockResolvedValue({ rowCount: 0, rows: [] });
 
             await expect(
-                service.vincularDespesa({ gru_id: 1, des_id: 42, valor: 300 })
+                service.vincularDespesa({ gru_id: 1, des_id: DES_ID, valor: 300 })
             ).rejects.toMatchObject({ code: 'GRU04' });
         });
 
@@ -135,16 +137,16 @@ describe('saga.service', () => {
             });
 
             await expect(
-                service.vincularDespesa({ gru_id: 1, des_id: 42, valor: 300 })
+                service.vincularDespesa({ gru_id: 1, des_id: DES_ID, valor: 300 })
             ).rejects.toMatchObject({ code: 'GRU04' });
         });
 
         it.each([
-            ['sem gru_id', { des_id: 42, valor: 300 }],
+            ['sem gru_id', { des_id: DES_ID, valor: 300 }],
             ['sem des_id', { gru_id: 1, valor: 300 }],
-            ['sem valor', { gru_id: 1, des_id: 42 }],
-            ['com valor zero', { gru_id: 1, des_id: 42, valor: 0 }],
-            ['com valor negativo', { gru_id: 1, des_id: 42, valor: -5 }],
+            ['sem valor', { gru_id: 1, des_id: DES_ID }],
+            ['com valor zero', { gru_id: 1, des_id: DES_ID, valor: 0 }],
+            ['com valor negativo', { gru_id: 1, des_id: DES_ID, valor: -5 }],
         ])('rejeita comando %s', async (_titulo, comando) => {
             await expect(service.vincularDespesa(comando)).rejects.toMatchObject({ code: '2' });
         });
@@ -156,9 +158,9 @@ describe('saga.service', () => {
             ];
             deps.divisaoService.calcularDivisaoDespesa.mockResolvedValue(divisao);
 
-            const resultado = await service.vincularDespesa({ gru_id: 1, des_id: 42, valor: 300 });
+            const resultado = await service.vincularDespesa({ gru_id: 1, des_id: DES_ID, valor: 300 });
 
-            expect(resultado).toEqual({ gru_id: 1, des_id: 42, valor: 300, vinculos: 2, divisao });
+            expect(resultado).toEqual({ gru_id: 1, des_id: DES_ID, valor: 300, vinculos: 2, divisao });
         });
     });
 
@@ -166,17 +168,17 @@ describe('saga.service', () => {
         it('remove todos os vínculos da despesa e informa quantos foram', async () => {
             deps.despesaParticipanteRepository.deletarPorDespesa.mockResolvedValue({ rowCount: 2, rows: [] });
 
-            const resultado = await service.desvincularDespesa({ des_id: 42 });
+            const resultado = await service.desvincularDespesa({ des_id: DES_ID });
 
-            expect(deps.despesaParticipanteRepository.deletarPorDespesa).toHaveBeenCalledWith(42);
-            expect(resultado).toEqual({ des_id: 42, vinculosRemovidos: 2 });
+            expect(deps.despesaParticipanteRepository.deletarPorDespesa).toHaveBeenCalledWith(DES_ID);
+            expect(resultado).toEqual({ des_id: DES_ID, vinculosRemovidos: 2 });
         });
 
         it('não falha ao compensar uma despesa que já não tinha vínculos (idempotência)', async () => {
             deps.despesaParticipanteRepository.deletarPorDespesa.mockResolvedValue({ rowCount: 0, rows: [] });
 
-            await expect(service.desvincularDespesa({ des_id: 42 })).resolves.toEqual({
-                des_id: 42,
+            await expect(service.desvincularDespesa({ des_id: DES_ID })).resolves.toEqual({
+                des_id: DES_ID,
                 vinculosRemovidos: 0,
             });
         });

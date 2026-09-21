@@ -12,11 +12,21 @@ function criarServiceDivisao(participanteRepository, despesaParticipanteReposito
         const exclusivos = vinculos.filter(v => v.dp_exclusiva);
 
 
+        /*
+          O `listarPorDespesa` traz os vínculos daquela despesa em QUALQUER
+          grupo — a mesma despesa pode estar vinculada a participantes de
+          grupos diferentes. Aqui só nos interessam os deste grupo, então
+          descartamos os que não têm participante correspondente. Sem esse
+          filtro, o `find` devolve undefined e a leitura de `.par_id` logo
+          abaixo quebra com TypeError (virava 500 na API).
+        */
         const elegiveis = exclusivos.length > 0
-            ? exclusivos.map(v => ({
-                participante: participantes.find(p => p.par_id === v.par_id),
-                peso: Number(v.dp_peso ?? 1),
-            }))
+            ? exclusivos
+                .map(v => ({
+                    participante: participantes.find(p => p.par_id === v.par_id),
+                    peso: Number(v.dp_peso ?? 1),
+                }))
+                .filter(e => e.participante)
             : participantes
                 .filter(p => !p.par_isento)
                 .map(p => ({

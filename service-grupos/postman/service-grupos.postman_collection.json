@@ -1,0 +1,446 @@
+{
+  "info": {
+    "name": "TripManager - service-grupos",
+    "description": "Collection para testar o service-grupos (porta 3002).\n\nORDEM DE USO:\n1. Rode '0. Setup > Criar usuario' UMA vez (se der erro de email duplicado, tudo bem, pule).\n2. Rode '0. Setup > Login' - o token e salvo automaticamente na variavel {{token}}.\n3. Rode '1. Grupos > Criar grupo' - o gru_id e salvo automaticamente.\n4. Rode '2. Participantes > Criar participante' 2-3 vezes.\n5. Rode '4. Divisao > Calcular divisao'.\n\nAs variaveis {{token}}, {{gru_id}}, {{par_id}} e {{dp_id}} sao preenchidas sozinhas pelos scripts da aba 'Tests'.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "url_usuario", "value": "http://localhost:3000/api/v1" },
+    { "key": "url_grupos", "value": "http://localhost:3002/api/v1" },
+    { "key": "url_orquestrador", "value": "http://localhost:3004/api" },
+    { "key": "email", "value": "julia@teste.com" },
+    { "key": "senha", "value": "Senha@123" },
+    { "key": "token", "value": "" },
+    { "key": "gru_id", "value": "" },
+    { "key": "par_id", "value": "" },
+    { "key": "des_id", "value": "3ab18a06-d42b-4d10-ab18-1761105a51af" },
+    { "key": "dp_id", "value": "" },
+    { "key": "saga_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0. Setup (service-usuario)",
+      "item": [
+        {
+          "name": "Criar usuario",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{url_usuario}}/usuario", "host": ["{{url_usuario}}"], "path": ["usuario"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usu_nome\": \"Julia\",\n  \"usu_email\": \"{{email}}\",\n  \"usu_password\": \"{{senha}}\",\n  \"usu_plano\": \"free\"\n}"
+            },
+            "description": "Cria o usuario dono dos grupos. A senha precisa ter 8+ caracteres, 1 letra, 1 numero e 1 caractere especial.\n\nPlano 'free' = limite de 5 participantes por grupo. Plano 'premium' = 15."
+          }
+        },
+        {
+          "name": "Login (salva o token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.payload && body.payload.jwt) {",
+                  "    pm.collectionVariables.set('token', body.payload.jwt);",
+                  "    console.log('Token salvo!');",
+                  "}",
+                  "pm.test('Login OK', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{url_usuario}}/session", "host": ["{{url_usuario}}"], "path": ["session"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usu_email\": \"{{email}}\",\n  \"usu_password\": \"{{senha}}\"\n}"
+            },
+            "description": "RODE ISSO PRIMEIRO. O script da aba 'Tests' pega o jwt da resposta e salva em {{token}}, que todas as outras requisicoes usam. O token expira em 24h - se comecar a dar 401, rode o login de novo."
+          }
+        },
+        {
+          "name": "Health check do service-grupos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{url_grupos}}/health", "host": ["{{url_grupos}}"], "path": ["health"] },
+            "description": "Rota sem autenticacao. Se responder {status: ok}, o servico esta no ar."
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Grupos",
+      "item": [
+        {
+          "name": "Criar grupo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.payload && body.payload.gru_id) {",
+                  "    pm.collectionVariables.set('gru_id', body.payload.gru_id);",
+                  "}",
+                  "pm.test('Grupo criado', function () { pm.expect(body.code).to.eql('1'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{url_grupos}}/grupo", "host": ["{{url_grupos}}"], "path": ["grupo"] },
+            "body": { "mode": "raw", "raw": "{\n  \"gru_nome\": \"Viagem Floripa\"\n}" },
+            "description": "O dono do grupo (usu_id_dono) vem do token, nao do body. Salva o gru_id em {{gru_id}}."
+          }
+        },
+        {
+          "name": "Listar meus grupos",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{url_grupos}}/grupo", "host": ["{{url_grupos}}"], "path": ["grupo"] },
+            "description": "Lista so os grupos onde o usuario logado e o dono."
+          }
+        },
+        {
+          "name": "Buscar grupo por id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{url_grupos}}/grupo/{{gru_id}}", "host": ["{{url_grupos}}"], "path": ["grupo", "{{gru_id}}"] }
+          }
+        },
+        {
+          "name": "Editar grupo",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{url_grupos}}/grupo/{{gru_id}}", "host": ["{{url_grupos}}"], "path": ["grupo", "{{gru_id}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"gru_nome\": \"Viagem Floripa 2026\"\n}" },
+            "description": "So o dono do grupo consegue editar. Com o token de outro usuario, retorna 403 (SEM_PERMISSAO).\n\nOs DELETEs ficam na pasta '7. Limpeza', no fim da collection, porque precisam rodar numa ordem especifica."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Participantes",
+      "item": [
+        {
+          "name": "Criar participante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.payload && body.payload.par_id) {",
+                  "    pm.collectionVariables.set('par_id', body.payload.par_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{url_grupos}}/participante", "host": ["{{url_grupos}}"], "path": ["participante"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gru_id\": {{gru_id}},\n  \"par_nome\": \"Renan\",\n  \"par_isento\": false\n}"
+            },
+            "description": "Campos:\n- gru_id (obrigatorio, numero)\n- par_nome (obrigatorio)\n- usu_id (opcional) - so se a pessoa tiver conta no sistema\n- par_isento (opcional, padrao false) - isento NAO entra na divisao de custos\n\nRode 2-3 vezes mudando o nome para ter gente suficiente na divisao.\nNo plano free o limite e 5 participantes: o 6o retorna 409 (GRU01)."
+          }
+        },
+        {
+          "name": "Criar participante ISENTO",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{url_grupos}}/participante", "host": ["{{url_grupos}}"], "path": ["participante"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gru_id\": {{gru_id}},\n  \"par_nome\": \"Crianca (nao paga)\",\n  \"par_isento\": true\n}"
+            },
+            "description": "Participante isento aparece no grupo mas NAO recebe valor na divisao. Bom para testar a regra do calculo."
+          }
+        },
+        {
+          "name": "Listar participantes do grupo",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{url_grupos}}/participante/grupo/{{gru_id}}",
+              "host": ["{{url_grupos}}"],
+              "path": ["participante", "grupo", "{{gru_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Editar participante",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{url_grupos}}/participante/{{par_id}}",
+              "host": ["{{url_grupos}}"],
+              "path": ["participante", "{{par_id}}"]
+            },
+            "body": { "mode": "raw", "raw": "{\n  \"par_nome\": \"Renan Klettenberg\",\n  \"par_isento\": false\n}" },
+            "description": "Edita o ultimo participante criado ({{par_id}}). Para editar outro, troque o id na URL."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Despesa-Participante (vinculos)",
+      "item": [
+        {
+          "name": "Criar vinculo com PESO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.payload && body.payload.dp_id) {",
+                  "    pm.collectionVariables.set('dp_id', body.payload.dp_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{url_grupos}}/despesa-participante",
+              "host": ["{{url_grupos}}"],
+              "path": ["despesa-participante"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"des_id\": \"{{des_id}}\",\n  \"par_id\": {{par_id}},\n  \"dp_exclusiva\": false,\n  \"dp_peso\": 2\n}"
+            },
+            "description": "Liga uma despesa (que vive no service-despesas) a um participante daqui.\n\n- dp_peso: quem tem peso 2 paga o dobro de quem tem peso 1.\n- dp_exclusiva: true = SO os participantes exclusivos entram na divisao dessa despesa, o resto do grupo fica de fora.\n\nO par (des_id, par_id) e unico: criar o mesmo vinculo 2x da erro.\n\nOBS: o des_id e o UUID que o service-despesas gera para a despesa - nao e um numero nosso. O service-grupos NAO valida se essa despesa existe de verdade no outro servico (limitacao conhecida, ver README do servico)."
+          }
+        },
+        {
+          "name": "Listar vinculos de uma despesa",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{url_grupos}}/despesa-participante/despesa/{{des_id}}",
+              "host": ["{{url_grupos}}"],
+              "path": ["despesa-participante", "despesa", "{{des_id}}"]
+            },
+            "description": "Mostra todos os participantes vinculados aquela despesa, com peso e flag de exclusividade."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Divisao (o calculo principal)",
+      "item": [
+        {
+          "name": "Calcular divisao da despesa",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{url_grupos}}/grupo/{{gru_id}}/despesa/{{des_id}}/divisao",
+              "host": ["{{url_grupos}}"],
+              "path": ["grupo", "{{gru_id}}", "despesa", "{{des_id}}", "divisao"]
+            },
+            "body": { "mode": "raw", "raw": "{\n  \"valor\": 300\n}" },
+            "description": "ESTA E A ROTA PRINCIPAL DO SERVICO.\n\nRegras aplicadas, nesta ordem:\n1. Se existe algum vinculo com dp_exclusiva=true, SO os exclusivos dividem.\n2. Senao, dividem todos os participantes nao isentos.\n3. O valor e rateado proporcionalmente ao dp_peso (padrao 1).\n\nExemplo: 300 reais, Julia peso 1 e Renan peso 2 => Julia 100, Renan 200.\n\nO calculo NAO e gravado no banco: e so leitura, retorna quanto cada um deve."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. SAGA (via orquestrador)",
+      "item": [
+        {
+          "name": "Registrar despesa - grupo VALIDO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.id) { pm.collectionVariables.set('saga_id', body.id); }",
+                  "pm.test('Saga concluida', function () { pm.expect(body.status).to.eql('CONCLUIDA'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{url_orquestrador}}/sagas/despesas",
+              "host": ["{{url_orquestrador}}"],
+              "path": ["sagas", "despesas"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"Hotel\",\n  \"valor\": 300,\n  \"moeda\": \"BRL\",\n  \"categoria\": \"hospedagem\",\n  \"viagemId\": 1,\n  \"gruId\": {{gru_id}}\n}"
+            },
+            "description": "AQUI SEU SERVICO E TESTADO VIA RABBITMQ, nao via HTTP.\n\nO que acontece:\n1. Orquestrador publica na fila 'cmd_validar_grupo'.\n2. O consumer do service-grupos (src/consumer/saga.consumer.js) le a mensagem.\n3. Ele chama sagaService.validarGrupo(), que confere se o grupo existe e tem participantes nao isentos.\n4. Responde na fila 'resposta_validar_grupo' com status SUCESSO e evento GRUPO_VALIDADO.\n5. So entao o orquestrador segue para o passo REGISTRAR_DESPESA.\n\nResposta esperada: status CONCLUIDA, com o passo VALIDAR_GRUPO em SUCESSO.\n\nOBS: esse passo so roda se voce mandar 'gruId'. Sem gruId, a despesa e pessoal e pula o service-grupos.\n\nPara ver do seu lado, rode no terminal:\ndocker logs -f trabalho-devops-1-service-grupos-1"
+          }
+        },
+        {
+          "name": "Registrar despesa - grupo INEXISTENTE (falha)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{url_orquestrador}}/sagas/despesas",
+              "host": ["{{url_orquestrador}}"],
+              "path": ["sagas", "despesas"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"Hotel\",\n  \"valor\": 300,\n  \"moeda\": \"BRL\",\n  \"categoria\": \"hospedagem\",\n  \"viagemId\": 1,\n  \"gruId\": 99999\n}"
+            },
+            "description": "Testa o caminho de FALHA da saga, que e o mais importante do padrao.\n\nEsperado: HTTP 422, status FALHA, passo VALIDAR_GRUPO com erro GRU03 'Grupo nao encontrado'.\n\nRepare que a despesa NAO chega a ser criada: a saga parou no primeiro passo. E esse o ponto do padrao SAGA."
+          }
+        },
+        {
+          "name": "Consultar saga por id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_orquestrador}}/sagas/{{saga_id}}",
+              "host": ["{{url_orquestrador}}"],
+              "path": ["sagas", "{{saga_id}}"]
+            },
+            "description": "Mostra o historico da saga gravado no banco do orquestrador."
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Casos de erro",
+      "item": [
+        {
+          "name": "Sem token (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{url_grupos}}/grupo", "host": ["{{url_grupos}}"], "path": ["grupo"] },
+            "description": "Esperado: 401, code SES02 'Faca login para poder continuar.'"
+          }
+        },
+        {
+          "name": "Token invalido (401)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer token_qualquer_invalido" }],
+            "url": { "raw": "{{url_grupos}}/grupo", "host": ["{{url_grupos}}"], "path": ["grupo"] },
+            "description": "Esperado: 401, code SES03 'Token invalido.'"
+          }
+        },
+        {
+          "name": "Grupo inexistente (404)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{url_grupos}}/grupo/99999", "host": ["{{url_grupos}}"], "path": ["grupo", "99999"] },
+            "description": "Esperado: 404, code GRU03 'Grupo nao encontrado.'"
+          }
+        },
+        {
+          "name": "Body invalido (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{url_grupos}}/grupo", "host": ["{{url_grupos}}"], "path": ["grupo"] },
+            "body": { "mode": "raw", "raw": "{\n  \"gru_nome\": \"\"\n}" },
+            "description": "Nome vazio e barrado pelo Zod (src/dto/grupo.dto.js). Esperado: 400, code 2."
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Limpeza (rode nesta ordem)",
+      "description": "Os DELETEs ficam aqui porque a ordem importa: o banco tem chaves estrangeiras.\n\nORDEM OBRIGATORIA: vinculos -> participantes -> grupo.\n\nSe tentar deletar o grupo antes, o Postgres barra e a API devolve 500.",
+      "item": [
+        {
+          "name": "1) Deletar vinculo",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{url_grupos}}/despesa-participante/{{dp_id}}",
+              "host": ["{{url_grupos}}"],
+              "path": ["despesa-participante", "{{dp_id}}"]
+            },
+            "description": "Remove o vinculo despesa-participante criado na pasta 3."
+          }
+        },
+        {
+          "name": "2) Deletar participante",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{url_grupos}}/participante/{{par_id}}",
+              "host": ["{{url_grupos}}"],
+              "path": ["participante", "{{par_id}}"]
+            },
+            "description": "Deleta UM participante ({{par_id}}). Se voce criou varios, repita trocando o id na URL ate o grupo ficar vazio."
+          }
+        },
+        {
+          "name": "3) Deletar grupo",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{url_grupos}}/grupo/{{gru_id}}", "host": ["{{url_grupos}}"], "path": ["grupo", "{{gru_id}}"] },
+            "description": "So funciona com o grupo ja sem participantes.\n\nSe ainda houver algum, a resposta e 500 com a mensagem crua do Postgres:\n'violates foreign key constraint fk_participantes_gru_id'.\n\n(Isso e um comportamento conhecido do servico, nao um erro seu de uso.)"
+          }
+        }
+      ]
+    }
+  ]
+}
