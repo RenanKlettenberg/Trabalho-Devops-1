@@ -44,7 +44,7 @@ services:
   db-viagens:
     image: postgres:15
     ports:
-      - "5433:5432"
+      - "5437:5432"
     environment:
       POSTGRES_DB: viagens_db
       POSTGRES_USER: usuario     

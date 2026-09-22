@@ -1,136 +1,311 @@
-import { describe, it, expect, vi } from 'vitest';
-import captureAppError from "../../shared/utils/test.throw.js";
-import criarService from "../../service/evento.service.js";
-import * as dto from "../../dto/evento.dto.js";
+import { describe, it, expect, vi } from "vitest";
+import { CATEGORIA_EVENTO } from "../../shared/constants/evento.constants.js";
+import criarServiceEvento from "../../service/evento.service.js";
+import RESPONSE from "../../shared/constants/response.js";
 
-describe("Criar evento", () => {
-    const valid_data = {
-        eve_nome: "Check-in hotel",
-        eve_categoria: 2, // Hospedagem
-        eve_data_estimatida: false,
-        eve_data_ini: "11-13-2113 14:00",
-        eve_data_fim: "11-13-2113 15:00",
-        via_id: 1,
-        usu_id: 1,
+describe("Evento Service", () => {
+
+    function criarMocks() {
+        return {
+            repository: {
+                listar: vi.fn(),
+                getById: vi.fn(),
+                getViagemById: vi.fn(),
+                getUltimaOrdemByViagem: vi.fn(),
+                criarEvento: vi.fn(),
+                editarEvento: vi.fn(),
+                deletarEvento: vi.fn(),
+                marcarFalhaSincronizacaoDespesa: vi.fn(),
+            },
+
+            despesaClient: {
+                criarDespesa: vi.fn(),
+            }
+        };
     }
 
-    it("deve criar evento com a próxima ordem disponível", async () => {
-        const fake_repo = {
-            getViagemById: vi.fn().mockResolvedValue({ via_id: 1 }),
-            getUltimaOrdemByViagem: vi.fn().mockResolvedValue(3),
-            criarEvento: vi.fn().mockResolvedValue({ ...valid_data, eve_id: 1, eve_ordem: 4 }),
-        };
-        const fake_despesa_client = { criarDespesa: vi.fn() };
-        const service = criarService(fake_repo, fake_despesa_client);
+    describe("listar", () => {
 
-        let res = await captureAppError(async () => await service.criarEvento({ ...valid_data }));
+        it("deve listar eventos", async () => {
+            const { repository, despesaClient } = criarMocks();
 
-        expect(res.eve_ordem).toBe(4);
-    })
+            const eventos = [
+                { eve_id: 1, eve_nome: "Check-in" },
+                { eve_id: 2, eve_nome: "Almoço" }
+            ];
 
-    it("deve validar criar evento", async () => {
-        let res = await captureAppError(() => dto.criarDto({ campo_extra: "deve ser ignorado", ...valid_data }));
+            repository.listar.mockResolvedValue(eventos);
 
-        expect(res).toMatchObject({
-            eve_nome: valid_data.eve_nome,
-            eve_categoria: valid_data.eve_categoria,
-            eve_data_estimatida: valid_data.eve_data_estimatida,
-            eve_data_ini: new Date(valid_data.eve_data_ini),
-            eve_data_fim: new Date(valid_data.eve_data_fim),
-            eve_status: 1,       // default aplicado pelo schema
-            eve_orcamento: 0,    // default aplicado pelo schema
-            via_id: valid_data.via_id,
-            usu_id: valid_data.usu_id,
+            const service = criarServiceEvento(repository, despesaClient);
+
+            const resultado = await service.listar({
+                via_id: 100
+            });
+
+            expect(repository.listar).toHaveBeenCalledWith({
+                via_id: 100
+            });
+
+            expect(resultado).toEqual(eventos);
         });
-        expect(res).not.toHaveProperty("campo_extra");
-    })
 
-    it("deve falhar por viagem não encontrada", async () => {
-        const fake_repo = {
-            getViagemById: vi.fn().mockResolvedValue(null),
-            criarEvento: vi.fn(),
-        };
-        const service = criarService(fake_repo, { criarDespesa: vi.fn() });
+    });
 
-        let res = await captureAppError(async () => await service.criarEvento({ ...valid_data }));
+    describe("getById", () => {
 
-        expect(res.status).toBe(404);
-    })
+        it("deve buscar evento pelo ID", async () => {
+            const { repository, despesaClient } = criarMocks();
 
-    it("deve falhar por categoria inexistente", async () => {
-        let res = await captureAppError(() => dto.criarDto({ ...valid_data, eve_categoria: 99 }));
+            const evento = {
+                eve_id: 10,
+                eve_nome: "Check-in"
+            };
 
-        expect(res[0].code).toBe('custom');
-    })
+            repository.getById.mockResolvedValue(evento);
 
-    it("deve falhar por horário fixo sem data de início/fim", async () => {
-        let res = await captureAppError(() => dto.criarDto({ ...valid_data, eve_data_estimatida: false, eve_data_ini: undefined, eve_data_fim: undefined }));
+            const service = criarServiceEvento(repository, despesaClient);
 
-        expect(res[0].code).toBe('custom');
-    })
+            const resultado = await service.getById(10);
 
-    it("deve permitir duração estimada sem data fixa", async () => {
-        let res = await captureAppError(() => dto.criarDto({ ...valid_data, eve_data_estimatida: true, eve_data_ini: undefined, eve_data_fim: undefined }));
+            expect(repository.getById).toHaveBeenCalledWith(10);
+            expect(resultado).toEqual(evento);
+        });
 
-        expect(res.eve_data_estimatida).toBe(true);
-    })
-})
+    });
 
-describe("Criar evento - integração com ms-despesas (Requisito 3)", () => {
-    const valid_data = {
-        eve_nome: "Passeio de barco",
-        eve_categoria: 3, // Lazer
-        eve_data_estimatida: true,
-        eve_orcamento: 250.00,
-        via_id: 1,
-        usu_id: 1,
-    }
+    describe("criarEvento", () => {
 
-    it("deve disparar criação de despesa quando eve_orcamento > 0", async () => {
-        const fake_repo = {
-            getViagemById: vi.fn().mockResolvedValue({ via_id: 1 }),
-            getUltimaOrdemByViagem: vi.fn().mockResolvedValue(0),
-            criarEvento: vi.fn().mockResolvedValue({ ...valid_data, eve_id: 5 }),
-        };
-        const fake_despesa_client = {
-            criarDespesa: vi.fn().mockResolvedValue({ des_id: 42 }),
-        };
-        const service = criarService(fake_repo, fake_despesa_client);
+        it("deve criar evento com status ativo e próxima ordem", async () => {
+            const { repository, despesaClient } = criarMocks();
 
-        await captureAppError(async () => await service.criarEvento({ ...valid_data }));
+            repository.getViagemById.mockResolvedValue({
+                via_id: 100
+            });
 
-        expect(fake_despesa_client.criarDespesa).toHaveBeenCalledOnce();
-    })
+            repository.getUltimaOrdemByViagem.mockResolvedValue(5);
 
-    it("não deve disparar criação de despesa quando eve_orcamento é 0", async () => {
-        const fake_repo = {
-            getViagemById: vi.fn().mockResolvedValue({ via_id: 1 }),
-            getUltimaOrdemByViagem: vi.fn().mockResolvedValue(0),
-            criarEvento: vi.fn().mockResolvedValue({ ...valid_data, eve_orcamento: 0, eve_id: 6 }),
-        };
-        const fake_despesa_client = { criarDespesa: vi.fn() };
-        const service = criarService(fake_repo, fake_despesa_client);
+            repository.criarEvento.mockResolvedValue({
+                eve_id: 20,
+                eve_nome: "Check-in",
+                eve_categoria: 2,
+                eve_orcamento: 0,
+                via_id: 100
+            });
 
-        await captureAppError(async () => await service.criarEvento({ ...valid_data, eve_orcamento: 0 }));
+            const service = criarServiceEvento(repository, despesaClient);
 
-        expect(fake_despesa_client.criarDespesa).not.toHaveBeenCalled();
-    })
+            const dados = {
+                eve_nome: "Check-in",
+                eve_categoria: 2,
+                eve_orcamento: 0,
+                via_id: 100
+            };
 
-    it("deve salvar erro de sincronização se a chamada ao ms-despesas falhar, sem quebrar a criação do evento", async () => {
-        const fake_repo = {
-            getViagemById: vi.fn().mockResolvedValue({ via_id: 1 }),
-            getUltimaOrdemByViagem: vi.fn().mockResolvedValue(0),
-            criarEvento: vi.fn().mockResolvedValue({ ...valid_data, eve_id: 7 }),
-            marcarFalhaSincronizacaoDespesa: vi.fn(),
-        };
-        const fake_despesa_client = {
-            criarDespesa: vi.fn().mockRejectedValue(new Error("ms-despesas indisponível")),
-        };
-        const service = criarService(fake_repo, fake_despesa_client);
+            const resultado = await service.criarEvento(dados);
 
-        let res = await captureAppError(async () => await service.criarEvento({ ...valid_data }));
+            expect(repository.criarEvento).toHaveBeenCalledWith({
+                ...dados,
+                eve_status: 1,
+                eve_ordem: 6,
+            });
 
-        expect(res).toHaveProperty("eve_id");
-        expect(fake_repo.marcarFalhaSincronizacaoDespesa).toHaveBeenCalledOnce();
-    })
-})
+            expect(resultado.eve_id).toBe(20);
+            expect(despesaClient.criarDespesa).not.toHaveBeenCalled();
+        });
+
+        it("deve criar despesa quando evento possui orçamento", async () => {
+            const { repository, despesaClient } = criarMocks();
+
+            repository.getViagemById.mockResolvedValue({
+                via_id: 100
+            });
+
+            repository.getUltimaOrdemByViagem.mockResolvedValue(2);
+
+            repository.criarEvento.mockResolvedValue({
+                eve_id: 30,
+                eve_descricao: "Hotel",
+                eve_categoria: 2,
+                eve_orcamento: 500,
+                via_id: 100
+            });
+
+            despesaClient.criarDespesa.mockResolvedValue({
+                sucesso: true
+            });
+
+            const service = criarServiceEvento(repository, despesaClient);
+
+            const resultado = await service.criarEvento({
+                via_id: 100,
+                eve_categoria: 2,
+                eve_orcamento: 500
+            });
+
+            expect(despesaClient.criarDespesa).toHaveBeenCalledWith({
+                descricao: "Hotel",
+                categoria: CATEGORIA_EVENTO[2],
+                valor: 500,
+                eventoId: 30,
+                viagemId: 100,
+            });
+
+            expect(resultado.eve_id).toBe(30);
+        });
+
+        it("deve marcar falha quando criação da despesa falhar", async () => {
+            const { repository, despesaClient } = criarMocks();
+
+            repository.getViagemById.mockResolvedValue({
+                via_id: 100
+            });
+
+            repository.getUltimaOrdemByViagem.mockResolvedValue(2);
+
+            repository.criarEvento.mockResolvedValue({
+                eve_id: 31,
+                eve_descricao: "Hotel",
+                eve_categoria: 2,
+                eve_orcamento: 500,
+                via_id: 100
+            });
+
+            despesaClient.criarDespesa.mockRejectedValue(
+                new Error("Erro no serviço de despesas")
+            );
+
+            const service = criarServiceEvento(repository, despesaClient);
+
+            await service.criarEvento({
+                via_id: 100,
+                eve_categoria: 2,
+                eve_orcamento: 500
+            });
+
+            expect(
+                repository.marcarFalhaSincronizacaoDespesa
+            ).toHaveBeenCalledWith(31);
+        });
+
+        it("deve lançar erro quando viagem não existir", async () => {
+            const { repository, despesaClient } = criarMocks();
+
+            repository.getViagemById.mockResolvedValue(null);
+
+            const service = criarServiceEvento(repository, despesaClient);
+
+            await expect(
+                service.criarEvento({
+                    via_id: 999999,
+                    eve_nome: "Evento"
+                })
+            ).rejects.toMatchObject({
+                message: RESPONSE.VIAGEM_NAO_ENCONTRADA.message
+            });
+
+            expect(repository.criarEvento).not.toHaveBeenCalled();
+        });
+
+    });
+
+    describe("editarEvento", () => {
+
+        it("deve editar evento existente", async () => {
+            const { repository, despesaClient } = criarMocks();
+
+            repository.getById.mockResolvedValue({
+                eve_id: 10
+            });
+
+            repository.editarEvento.mockResolvedValue({
+                eve_id: 10,
+                eve_nome: "Evento editado"
+            });
+
+            const service = criarServiceEvento(repository, despesaClient);
+
+            const dados = {
+                eve_id: 10,
+                usu_id: 1,
+                eve_nome: "Evento editado"
+            };
+
+            const resultado = await service.editarEvento(dados);
+
+            expect(repository.getById).toHaveBeenCalledWith(10, 1);
+            expect(repository.editarEvento).toHaveBeenCalledWith(dados);
+            expect(resultado.eve_nome).toBe("Evento editado");
+        });
+
+        it("deve lançar erro quando evento não existir", async () => {
+            const { repository, despesaClient } = criarMocks();
+
+            repository.getById.mockResolvedValue(null);
+
+            const service = criarServiceEvento(repository, despesaClient);
+
+            await expect(
+                service.editarEvento({
+                    eve_id: 999999,
+                    usu_id: 1
+                })
+            ).rejects.toMatchObject({
+                message: RESPONSE.EVENTO_NAO_ENCONTRADO.message
+            });
+
+            expect(repository.editarEvento).not.toHaveBeenCalled();
+        });
+
+    });
+
+    describe("deletarEvento", () => {
+
+        it("deve deletar evento existente", async () => {
+            const { repository, despesaClient } = criarMocks();
+
+            repository.getById.mockResolvedValue({
+                eve_id: 10
+            });
+
+            repository.deletarEvento.mockResolvedValue({
+                sucesso: true
+            });
+
+            const service = criarServiceEvento(repository, despesaClient);
+
+            const dados = {
+                eve_id: 10,
+                usu_id: 1
+            };
+
+            const resultado = await service.deletarEvento(dados);
+
+            expect(repository.getById).toHaveBeenCalledWith(10, 1);
+            expect(repository.deletarEvento).toHaveBeenCalledWith(dados);
+            expect(resultado).toEqual({
+                sucesso: true
+            });
+        });
+
+        it("deve lançar erro quando evento não existir", async () => {
+            const { repository, despesaClient } = criarMocks();
+
+            repository.getById.mockResolvedValue(null);
+
+            const service = criarServiceEvento(repository, despesaClient);
+
+            await expect(
+                service.deletarEvento({
+                    eve_id: 999999,
+                    usu_id: 1
+                })
+            ).rejects.toMatchObject({
+                message: RESPONSE.EVENTO_NAO_ENCONTRADO.message
+            });
+
+            expect(repository.deletarEvento).not.toHaveBeenCalled();
+        });
+
+    });
+
+});

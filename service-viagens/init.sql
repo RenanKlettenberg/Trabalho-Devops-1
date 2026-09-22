@@ -24,7 +24,7 @@ CREATE TABLE viagem.eventos(
 	eve_data_estimatida BOOLEAN NOT NULL DEFAULT true,
 	eve_orcamento DECIMAL(10,2) DEFAULT 0,
 	eve_ordem INT DEFAULT 0,
-	eve_sync_despesa_status SMALLINT DEFAULT NULL
+	eve_sync_despesa_status SMALLINT DEFAULT NULL,
 
 	via_id INT NOT NULL,
 	usu_id INT NOT NULL,
