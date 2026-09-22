@@ -659,6 +659,56 @@
             },
             "description": "Resumo financeiro de uma viagem, no service-despesas.\n\nATENCAO: esta rota mudou de /api/viagens/<id>/dashboard para /api/dashboard/<id>. O nginx.conf do gateway foi ajustado junto."
           }
+        },
+        {
+          "name": "Criar despesa POR FORA da saga (404 do gateway)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Gateway devolve 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "// Prova que quem recusou foi o GATEWAY, nao o service-despesas:",
+                  "// a mensagem vem do nginx.conf, no campo 'erro'.",
+                  "pm.test('Quem recusou foi o gateway, nao o servico', function () {",
+                  "    pm.expect(pm.response.json().erro).to.include('API Gateway');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{url_gateway}}/api/despesas",
+              "host": [
+                "{{url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "despesas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"Despesa criada por fora da saga\",\n  \"valor\": 999,\n  \"moeda\": \"BRL\",\n  \"categoria\": \"OUTROS\",\n  \"viagemId\": \"1\"\n}"
+            },
+            "description": "PADRAO API GATEWAY: esta rota NAO passa.\n\nEsperado: 404 com {\"erro\":\"Rota nao encontrada no API Gateway\"}\n\nPor que: criar despesa mexe em mais de um servico - o grupo precisa\nser validado antes, no service-grupos. O caminho correto e o\norquestrador: POST /api/sagas/despesas (pasta 4).\n\nO gateway NAO bloqueia esta rota. Ele simplesmente nao a declara:\nno api-gateway/nginx.conf so existe `location ~ ^/api/despesas/.+`,\nque exige algo depois da barra. /api/despesas sem id nao casa com\nnenhum location e cai no 404 do fim do arquivo.\n\nRepare na mensagem: ela vem do GATEWAY. Se a rota estivesse\ndeclarada e o servico recusasse, o corpo teria o formato dele\n(code/message), nao {erro}.\n\nOBS: o DELETE /api/despesas/<id> continua passando, porque\ncompartilha a URL com a consulta - separar exigiria regra por\nmetodo. O estorno correto e POST /api/sagas/despesas/<id>/cancelar."
+          }
         }
       ]
     },
