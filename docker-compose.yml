@@ -122,6 +122,9 @@ services:
       - ./service-despesas/.env
     secrets:
       - DB_PASSWORD
+      # Necessario desde que as rotas HTTP ganharam authMiddleware: sem o
+      # segredo, jwt.verify falha e toda rota devolve 401.
+      - SECRET_JWT
 
   db-despesas:
     image: postgres:15

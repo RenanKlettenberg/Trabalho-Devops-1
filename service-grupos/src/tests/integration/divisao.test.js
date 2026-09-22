@@ -5,13 +5,6 @@ import pool from '../../infrastructure/database/connection.js';
 import gerarToken from '../utils/token.util.js';
 import { randomUUID } from 'crypto';
 
-// Duas despesas distintas. São UUIDs porque o des_id é a referência externa
-// para uma despesa do service-despesas, que identifica as dela por UUID.
-//
-// Geradas a cada execução de propósito: estes testes rodam contra um banco de
-// desenvolvimento que não é limpo entre execuções. Com um id fixo, os vínculos
-// de uma execução sobrariam para a próxima, e a divisão passaria a enxergar
-// participantes de grupos antigos.
 const DES_SEM_VINCULO = randomUUID();
 const DES_EXCLUSIVA = randomUUID();
 

@@ -13,13 +13,7 @@ export const service = criarServiceSaga({
     divisaoService,
 });
 
-/*
-  Conecta no broker e liga o consumer. Chamado pelo server.js.
 
-  O serviço NÃO morre se o RabbitMQ estiver fora do ar: a API REST continua
-  funcionando normalmente e só a parte de saga fica indisponível. Um
-  microsserviço que cai porque um vizinho caiu não é independente de verdade.
-*/
 export async function iniciarSaga() {
     try {
         const channel = await conectarRabbitMQ();

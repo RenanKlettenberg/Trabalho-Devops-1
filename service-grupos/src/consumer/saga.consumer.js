@@ -5,40 +5,15 @@
   fora, traduz para uma chamada do service e devolve uma resposta. Nenhuma
   regra de negócio mora aqui.
 
-  Convenção de nomes de fila combinada com o grupo:
+  Convenção de nomes de fila:
     - `cmd_*`      -> comando: o orquestrador manda alguém FAZER algo.
     - `resposta_*` -> a resposta desse comando, de volta para o orquestrador.
     - `service_quemEnvia/quemRecebe` -> evento avulso entre dois serviços.
 */
 
-/*
-  ATIVO vs SOBREAVISO — leia antes de mexer aqui.
 
-  Nem toda fila deste arquivo tem alguém do outro lado hoje. Isso é
-  intencional, não é implementação pela metade. Ver README.md do serviço.
-
-    ATIVO       cmd_validar_grupo               o orquestrador chama a cada
-                                                POST /api/sagas/despesas com gruId
-
-    SOBREAVISO  cmd_vincular_despesa_grupo      passo de ESCRITA: implementado e
-                                                testado, aguardando ser incluído
-                                                em RegistrarDespesaSaga.passos()
-
-    SOBREAVISO  cmd_desvincular_despesa_grupo   COMPENSAÇÃO do passo acima.
-                                                Idempotente de propósito
-
-    SOBREAVISO  service_despesa/grupos          evento DESPESA_CANCELADA; hoje o
-                                                service-despesas não o publica
-
-  As duas de SOBREAVISO ligadas a comando existem porque o contrato atual põe
-  o service-grupos como passo de validação (só leitura), e passo de leitura não
-  precisa de compensação. No dia em que a saga ganhar um passo que escreve no
-  grupos, a compensação já está pronta. Para exercitá-las agora, publique na
-  fila pelo painel do RabbitMQ (localhost:15672) — ver README.md.
-*/
 export const FILAS = Object.freeze({
     // ATIVO — passo de validação da saga (antes da despesa existir), contrato
-    // combinado com o service-orquestrador, ver ExemploSaga/README.md dele.
     CMD_VALIDAR: 'cmd_validar_grupo',
     RESPOSTA_VALIDAR: 'resposta_validar_grupo',
 
@@ -50,16 +25,12 @@ export const FILAS = Object.freeze({
     RESPOSTA_VINCULAR: 'resposta_vincular_despesa_grupo',
     RESPOSTA_DESVINCULAR: 'resposta_desvincular_despesa_grupo',
 
-    // SOBREAVISO — evento que o service-despesas publicaria ao cancelar uma
-    // despesa (padrão Event-Driven, sem resposta). Hoje ele não publica.
+    // SOBREAVISO — evento que o service-despesas publicaria ao cancelar uma despesa
     EVENTOS_DESPESA: 'service_despesa/grupos',
 });
 
 function criarConsumerSaga({ channel, sagaService }) {
-    /*
-      Envelope de resposta padronizado. O orquestrador só olha `sagaId` e
-      `status` para decidir se segue em frente ou se compensa.
-    */
+
     function montarResposta({ sagaId, status, evento, dados, erro }) {
         return {
             sagaId,
@@ -82,13 +53,8 @@ function criarConsumerSaga({ channel, sagaService }) {
     }
 
     /*
-      Trata um comando da saga.
-
-      A decisão mais importante deste arquivo: quando a regra de negócio falha,
-      nós respondemos FALHA e damos `ack` na mensagem. É tentador dar `nack`,
-      mas aí o orquestrador nunca receberia resposta e a saga ficaria pendurada
-      para sempre. `nack` fica reservado para mensagem corrompida, que ninguém
-      consegue processar nem responder.
+      quando a regra de negócio falha,
+      nós respondemos FALHA e damos `ack` na mensagem, para a fila nao ficar pendurada
     */
     async function tratarComando(msg, { executar, evento, filaRespostaPadrao }) {
         if (!msg) return null;
@@ -128,11 +94,7 @@ function criarConsumerSaga({ channel, sagaService }) {
         return resposta;
     }
 
-    /*
-      Passo de validação. O orquestrador manda o campo em camelCase (`gruId`,
-      no padrão dele) — aceitamos os dois formatos aqui na borda, pra não
-      obrigar o resto do service-grupos (que usa gru_id) a conhecer isso.
-    */
+
     function tratarValidarGrupo(msg) {
         return tratarComando(msg, {
             executar: (payload) => sagaService.validarGrupo({ gru_id: payload.gruId ?? payload.gru_id }),
@@ -157,13 +119,6 @@ function criarConsumerSaga({ channel, sagaService }) {
         });
     }
 
-    /*
-      Eventos avulsos (Event-Driven), sem resposta.
-
-      Diferença para o comando: aqui ninguém está esperando retorno. O
-      service-despesas avisa "cancelei a despesa X" e nós limpamos os vínculos
-      por nossa conta, sem o orquestrador no meio.
-    */
     async function tratarEvento(msg) {
         if (!msg) return null;
 

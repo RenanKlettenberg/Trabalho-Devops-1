@@ -7,5 +7,4 @@ app.listen(PORT, () => {
     console.log("Servidor iniciado na porta " + PORT);
 });
 
-// Liga o consumer da saga em paralelo ao servidor HTTP.
 iniciarSaga();

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "TripManager - aplicacao completa",
-    "description": "TripManager - sistema de gestao de viagens em microsservicos.\n\nTODAS as requisicoes passam pelo API GATEWAY em http://localhost:8080.\nOs cinco microsservicos NAO tem porta publicada: so o gateway e\nalcancavel de fora. Quem decide qual servico atende cada rota e o\narquivo api-gateway/nginx.conf.\n\nQUEM ATENDE O QUE:\n  /api/v1/usuario, /api/v1/session   -> service-usuario\n  /api/v1/viagem, /api/v1/evento     -> service-viagens\n  /api/v1/grupo, /api/v1/participante,\n  /api/v1/despesa-participante       -> service-grupos\n  /api/despesas                      -> service-despesas\n  /api/sagas                         -> service-orquestrador\n\nORDEM DE USO:\n1. 0. Setup > Health do GATEWAY   (confirma que o sistema esta no ar)\n2. 0. Setup > Criar usuario       (uma vez; se der email duplicado, pule)\n3. 0. Setup > Login               (salva o token sozinho)\n4. 1. Grupos > Criar grupo        (salva o gru_id sozinho)\n5. 2. Participantes > Criar participante  (2 ou 3 vezes)\n6. 4. Divisao > Calcular divisao\n7. 5. SAGA > Registrar despesa\n\nAs variaveis {{token}}, {{gru_id}}, {{par_id}} e {{dp_id}} sao\npreenchidas sozinhas pelos scripts da aba Tests.",
+    "description": "TripManager - sistema de gestao de viagens em microsservicos.\n\nTODAS as requisicoes passam pelo API GATEWAY em http://localhost:8080.\nOs cinco microsservicos NAO tem porta publicada: so o gateway e\nalcancavel de fora. Quem decide qual servico atende cada rota e o\narquivo api-gateway/nginx.conf.\n\nQUEM ATENDE O QUE:\n  /api/v1/usuario, /api/v1/session   -> service-usuario\n  /api/v1/viagem, /api/v1/evento     -> service-viagens\n  /api/v1/grupo, /api/v1/participante,\n  /api/v1/despesa-participante       -> service-grupos\n  /api/despesas                      -> service-despesas\n  /api/sagas                         -> service-orquestrador\n\nORDEM DE USO (a mesma da apresentacao - roda de cima para baixo):\n\n 0. Setup            Health do GATEWAY, Criar usuario, Login\n 1. Viagens          Criar viagem              -> salva {{via_id}}\n 2. Grupos           Criar grupo               -> salva {{gru_id}}\n 3. Participantes    Criar 2 ou 3, um isento   -> salva {{par_id}}\n 4. SAGA             Registrar despesa         -> salva {{despesa_id}}\n                     (e o caminho de FALHA, com grupo inexistente)\n 5. Despesas         Buscar a despesa que a saga criou\n 6. Vinculos         Ligar participantes a ESSA despesa\n 7. Divisao          Calcular o rateio DESSA despesa\n 8. Compensacao      Cancelar a despesa\n 9. Casos de erro    401, 404, 400\n10. Limpeza          NAO use na apresentacao - e so para limpar dados\n\nTudo encadeado: a despesa usada nas pastas 5 a 8 e a que a saga criou\nna pasta 4. Nada inventado.\n\nAs variaveis {{token}}, {{via_id}}, {{gru_id}}, {{par_id}}, {{dp_id}},\n{{saga_id}} e {{despesa_id}} sao preenchidas sozinhas pelos scripts.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -51,6 +51,14 @@
     },
     {
       "key": "saga_id",
+      "value": ""
+    },
+    {
+      "key": "via_id",
+      "value": ""
+    },
+    {
+      "key": "despesa_id",
       "value": ""
     }
   ],
@@ -163,7 +171,71 @@
       ]
     },
     {
-      "name": "1. Grupos",
+      "name": "1. Viagens",
+      "description": "O service-viagens e dono das viagens e dos eventos. Nao se comunica com nenhum outro servico para isso: resolve tudo no proprio banco.\n\nO via_id criado aqui e o mesmo numero que vai como viagemId ao registrar uma despesa.",
+      "item": [
+        {
+          "name": "Criar viagem",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{url_usuario}}/viagem",
+              "host": [
+                "{{url_usuario}}"
+              ],
+              "path": [
+                "viagem"
+              ]
+            },
+            "description": "Cria a viagem que da inicio ao fluxo.\n\nO usu_id vem no body (este servico nao le o token). O via_id da resposta e salvo em {{via_id}} e usado depois como viagemId na saga.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"via_nome\": \"Floripa 2026\",\n  \"usu_id\": 1,\n  \"via_data_ini\": \"2026-12-01\",\n  \"via_data_fim\": \"2026-12-10\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.payload && body.payload.via_id) {",
+                  "    pm.collectionVariables.set('via_id', body.payload.via_id);",
+                  "}",
+                  "pm.test('Viagem criada', function () { pm.expect(body.code).to.eql('1'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar viagens",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{url_usuario}}/viagem",
+              "host": [
+                "{{url_usuario}}"
+              ],
+              "path": [
+                "viagem"
+              ]
+            },
+            "description": "Lista as viagens cadastradas."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Grupos",
       "item": [
         {
           "name": "Criar grupo",
@@ -288,7 +360,7 @@
       ]
     },
     {
-      "name": "2. Participantes",
+      "name": "3. Participantes",
       "item": [
         {
           "name": "Criar participante",
@@ -421,119 +493,7 @@
       ]
     },
     {
-      "name": "3. Despesa-Participante (vinculos)",
-      "item": [
-        {
-          "name": "Criar vinculo com PESO",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const body = pm.response.json();",
-                  "if (body.payload && body.payload.dp_id) {",
-                  "    pm.collectionVariables.set('dp_id', body.payload.dp_id);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{url_grupos}}/despesa-participante",
-              "host": [
-                "{{url_grupos}}"
-              ],
-              "path": [
-                "despesa-participante"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"des_id\": \"{{des_id}}\",\n  \"par_id\": {{par_id}},\n  \"dp_exclusiva\": false,\n  \"dp_peso\": 2\n}"
-            },
-            "description": "Liga uma despesa (que vive no service-despesas) a um participante daqui.\n\n- dp_peso: quem tem peso 2 paga o dobro de quem tem peso 1.\n- dp_exclusiva: true = SO os participantes exclusivos entram na divisao dessa despesa, o resto do grupo fica de fora.\n\nO par (des_id, par_id) e unico: criar o mesmo vinculo 2x da erro.\n\nOBS: o des_id e o UUID que o service-despesas gera para a despesa - nao e um numero nosso. O service-grupos NAO valida se essa despesa existe de verdade no outro servico (limitacao conhecida, ver README do servico)."
-          }
-        },
-        {
-          "name": "Listar vinculos de uma despesa",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{url_grupos}}/despesa-participante/despesa/{{des_id}}",
-              "host": [
-                "{{url_grupos}}"
-              ],
-              "path": [
-                "despesa-participante",
-                "despesa",
-                "{{des_id}}"
-              ]
-            },
-            "description": "Mostra todos os participantes vinculados aquela despesa, com peso e flag de exclusividade."
-          }
-        }
-      ]
-    },
-    {
-      "name": "4. Divisao (o calculo principal)",
-      "item": [
-        {
-          "name": "Calcular divisao da despesa",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{url_grupos}}/grupo/{{gru_id}}/despesa/{{des_id}}/divisao",
-              "host": [
-                "{{url_grupos}}"
-              ],
-              "path": [
-                "grupo",
-                "{{gru_id}}",
-                "despesa",
-                "{{des_id}}",
-                "divisao"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"valor\": 300\n}"
-            },
-            "description": "ESTA E A ROTA PRINCIPAL DO SERVICO.\n\nRegras aplicadas, nesta ordem:\n1. Se existe algum vinculo com dp_exclusiva=true, SO os exclusivos dividem.\n2. Senao, dividem todos os participantes nao isentos.\n3. O valor e rateado proporcionalmente ao dp_peso (padrao 1).\n\nExemplo: 300 reais, Julia peso 1 e Renan peso 2 => Julia 100, Renan 200.\n\nO calculo NAO e gravado no banco: e so leitura, retorna quanto cada um deve."
-          }
-        }
-      ]
-    },
-    {
-      "name": "5. SAGA (via orquestrador)",
+      "name": "4. SAGA (via orquestrador)",
       "item": [
         {
           "name": "Registrar despesa - grupo VALIDO",
@@ -545,6 +505,8 @@
                 "exec": [
                   "const body = pm.response.json();",
                   "if (body.id) { pm.collectionVariables.set('saga_id', body.id); }",
+                  "const d = body.resultado && body.resultado.despesa;",
+                  "if (d && d.id) { pm.collectionVariables.set('despesa_id', d.id); }",
                   "pm.test('Saga concluida', function () { pm.expect(body.status).to.eql('CONCLUIDA'); });"
                 ]
               }
@@ -623,7 +585,245 @@
       ]
     },
     {
-      "name": "6. Casos de erro",
+      "name": "5. Despesas (service-despesas)",
+      "description": "Rotas HTTP do service-despesas. Todas exigem o JWT — o middleware foi ligado recentemente.\n\nUse depois da saga: ela cria a despesa e devolve o id, que estas rotas leem.",
+      "item": [
+        {
+          "name": "Buscar despesa criada pela SAGA",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{url_gateway}}/api/despesas/{{despesa_id}}",
+              "host": [
+                "{{url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "despesas",
+                "{{despesa_id}}"
+              ]
+            },
+            "description": "A PROVA de que a saga criou a despesa de verdade, no banco de OUTRO microsservico.\n\nO {{despesa_id}} e preenchido sozinho pela requisicao 'Registrar despesa - grupo VALIDO'. Rode a saga antes.\n\nRepare no vocabulario da resposta (descricao, moedaOriginal): e do service-despesas, diferente do service-grupos."
+          }
+        },
+        {
+          "name": "Listar categorias",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{url_gateway}}/api/despesas/categorias",
+              "host": [
+                "{{url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "despesas",
+                "categorias"
+              ]
+            },
+            "description": "Categorias aceitas pelo service-despesas. Rota simples, so leitura."
+          }
+        },
+        {
+          "name": "Dashboard da viagem",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{url_gateway}}/api/dashboard/1",
+              "host": [
+                "{{url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "1"
+              ]
+            },
+            "description": "Resumo financeiro de uma viagem, no service-despesas.\n\nATENCAO: esta rota mudou de /api/viagens/<id>/dashboard para /api/dashboard/<id>. O nginx.conf do gateway foi ajustado junto."
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Despesa-Participante (vinculos)",
+      "item": [
+        {
+          "name": "Criar vinculo com PESO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.payload && body.payload.dp_id) {",
+                  "    pm.collectionVariables.set('dp_id', body.payload.dp_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{url_grupos}}/despesa-participante",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "despesa-participante"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"des_id\": \"{{despesa_id}}\",\n  \"par_id\": {{par_id}},\n  \"dp_exclusiva\": false,\n  \"dp_peso\": 2\n}"
+            },
+            "description": "Liga uma despesa (que vive no service-despesas) a um participante daqui.\n\n- dp_peso: quem tem peso 2 paga o dobro de quem tem peso 1.\n- dp_exclusiva: true = SO os participantes exclusivos entram na divisao dessa despesa, o resto do grupo fica de fora.\n\nO par (des_id, par_id) e unico: criar o mesmo vinculo 2x da erro.\n\nOBS: o des_id e o UUID que o service-despesas gera para a despesa - nao e um numero nosso. O service-grupos NAO valida se essa despesa existe de verdade no outro servico (limitacao conhecida, ver README do servico)."
+          }
+        },
+        {
+          "name": "Listar vinculos de uma despesa",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{url_grupos}}/despesa-participante/despesa/{{despesa_id}}",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "despesa-participante",
+                "despesa",
+                "{{despesa_id}}"
+              ]
+            },
+            "description": "Mostra todos os participantes vinculados aquela despesa, com peso e flag de exclusividade."
+          }
+        }
+      ],
+      "description": "Liga participantes do grupo a uma despesa, com peso ou exclusividade.\n\nUsa {{despesa_id}} - a despesa REAL criada pela saga na pasta anterior.\nRode a saga antes.\n\nEste passo e manual hoje. O comando cmd_vincular_despesa_grupo esta\nimplementado e testado neste servico, mas nao foi incluido na lista de\npassos do orquestrador - ver README.md do servico."
+    },
+    {
+      "name": "7. Divisao (o calculo principal)",
+      "item": [
+        {
+          "name": "Calcular divisao da despesa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{url_grupos}}/grupo/{{gru_id}}/despesa/{{despesa_id}}/divisao",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "grupo",
+                "{{gru_id}}",
+                "despesa",
+                "{{despesa_id}}",
+                "divisao"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"valor\": 300\n}"
+            },
+            "description": "ESTA E A ROTA PRINCIPAL DO SERVICO.\n\nRegras aplicadas, nesta ordem:\n1. Se existe algum vinculo com dp_exclusiva=true, SO os exclusivos dividem.\n2. Senao, dividem todos os participantes nao isentos.\n3. O valor e rateado proporcionalmente ao dp_peso (padrao 1).\n\nExemplo: 300 reais, Julia peso 1 e Renan peso 2 => Julia 100, Renan 200.\n\nO calculo NAO e gravado no banco: e so leitura, retorna quanto cada um deve."
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Compensacao (SAGA)",
+      "description": "O encerramento do fluxo: desfaz a despesa registrada.\n\norquestrador publica em cmd_cancelar_despesa\n  -> service-despesas estorna a despesa\n  -> responde em resposta_cancelar_despesa\n\nO service-grupos NAO participa: ele so leu na saga de registro,\nentao nao tem o que desfazer. Passo de leitura nao precisa de\ncompensacao.",
+      "item": [
+        {
+          "name": "Cancelar despesa (COMPENSACAO)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{url_orquestrador}}/sagas/despesas/{{saga_id}}/cancelar",
+              "host": [
+                "{{url_orquestrador}}"
+              ],
+              "path": [
+                "sagas",
+                "despesas",
+                "{{saga_id}}",
+                "cancelar"
+              ]
+            },
+            "description": "COMPENSACAO da saga: desfaz uma despesa ja registrada.\n\nUse o id da saga de registro que deu certo ({{saga_id}}, salvo sozinho).\n\nO que acontece:\n  orquestrador publica em cmd_cancelar_despesa\n  -> service-despesas estorna a despesa\n  -> responde em resposta_cancelar_despesa\n\nO service-grupos NAO participa: ele so leu na saga de registro, entao nao tem o que desfazer. Passo de leitura nao precisa de compensacao.",
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('Compensacao concluida', function () { pm.expect(body.status).to.eql('CONCLUIDA'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9. Casos de erro",
       "item": [
         {
           "name": "Sem token (401)",
@@ -720,7 +920,7 @@
       ]
     },
     {
-      "name": "7. Limpeza (rode nesta ordem)",
+      "name": "10. Limpeza (rode nesta ordem)",
       "description": "Os DELETEs ficam aqui porque a ordem importa: o banco tem chaves estrangeiras.\n\nORDEM OBRIGATORIA: vinculos -> participantes -> grupo.\n\nSe tentar deletar o grupo antes, o Postgres barra e a API devolve 500.",
       "item": [
         {
