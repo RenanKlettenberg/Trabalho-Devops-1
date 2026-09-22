@@ -1,23 +1,24 @@
-export class DespesaRepository {
-  async salvar(despesa) {
-    void despesa;
-    throw new Error('Método salvar deve ser implementado pelo adaptador');
+/**
+ * Port (interface) do repositório de Despesa. Implementações concretas
+ * ficam em infrastructure/adapters/out/database.
+ */
+class DespesaRepository {
+  async salvar(_despesa) {
+    throw new Error('DespesaRepository.salvar não implementado');
   }
 
-  async buscarPorViagem(viagemId) {
-    void viagemId;
-    throw new Error('Método buscarPorViagem deve ser implementado pelo adaptador');
+  async buscarPorId(_id) {
+    throw new Error('DespesaRepository.buscarPorId não implementado');
   }
 
-  async buscarPorEventoId(eventoId) {
-    void eventoId;
-    throw new Error('Método buscarPorEventoId deve ser implementado pelo adaptador');
+  async buscarPorViagemId(_viagemId) {
+    throw new Error('DespesaRepository.buscarPorViagemId não implementado');
   }
 
-  async atualizarEmLote(despesas) {
-    void despesas;
-    throw new Error('Método atualizarEmLote deve ser implementado pelo adaptador');
+  async buscarPorEventoId(_eventoId) {
+    throw new Error('DespesaRepository.buscarPorEventoId não implementado');
   }
 }
 
+export { DespesaRepository };
 export default DespesaRepository;

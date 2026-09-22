@@ -1,35 +1,21 @@
-import { Moeda } from '../../../../src/domain/entities/Moeda.js';
+import Moeda from '../../../../src/domain/entities/Moeda.js';
+import { MoedaInvalidaException } from '../../../../src/domain/exceptions/DomainExceptions.js';
 
-describe('Entidade de Domínio: Moeda', () => {
-  it('deve aceitar moedas suportadas pelo sistema', () => {
-    expect(() => new Moeda({ codigo: 'USD', simbolo: '$' })).not.toThrow();
-    expect(() => new Moeda({ codigo: 'BRL', simbolo: 'R$' })).not.toThrow();
-    expect(() => new Moeda({ codigo: 'EUR', simbolo: '€' })).not.toThrow();
+describe('Moeda', () => {
+  it('aceita um código ISO-4217 válido', () => {
+    expect(new Moeda('BRL').codigo).toBe('BRL');
   });
 
-  it('deve lançar erro (MoedaInvalidaException) para códigos desconhecidos', () => {
-    expect(() => new Moeda({ codigo: 'XYZS', simbolo: 'XYZS' })).toThrow('Moeda não suportada');
+  it('normaliza para maiúsculas e remove espaços', () => {
+    expect(new Moeda(' usd ').codigo).toBe('USD');
   });
 
-  it('deve lançar erro quando o símbolo não é informado', () => {
-    expect(() => new Moeda({ codigo: 'BRL', simbolo: '' })).toThrow('O símbolo da moeda é obrigatório.');
+  it.each(['R$', 'BR', '', undefined, null])('rejeita código inválido: %p', (codigo) => {
+    expect(() => new Moeda(codigo)).toThrow(MoedaInvalidaException);
   });
 
-  it('deve lançar erro quando a taxa de câmbio base não é positiva', () => {
-    expect(() => new Moeda({ codigo: 'BRL', simbolo: 'R$', taxaCambioBase: 0 })).toThrow('A taxa de câmbio base deve ser maior que zero.');
-  });
-
-  it('atualizarTaxa deve trocar a taxa quando o valor é positivo', () => {
-    const moeda = new Moeda({ codigo: 'USD', simbolo: '$' });
-
-    moeda.atualizarTaxa(5.25);
-
-    expect(moeda.taxaCambioBase).toBe(5.25);
-  });
-
-  it('atualizarTaxa deve rejeitar valores não positivos', () => {
-    const moeda = new Moeda({ codigo: 'USD', simbolo: '$' });
-
-    expect(() => moeda.atualizarTaxa(0)).toThrow('A nova taxa de câmbio deve ser maior que zero.');
+  it('equals compara pelo código', () => {
+    expect(new Moeda('EUR').equals(new Moeda('eur'))).toBe(true);
+    expect(new Moeda('EUR').equals(new Moeda('USD'))).toBe(false);
   });
 });

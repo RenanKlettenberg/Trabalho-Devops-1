@@ -1,41 +1,44 @@
-export class Categoria {
-  constructor({ id, nome, descricao, cor, ativo = true }) {
-    this.id = id || crypto.randomUUID();
-    this.nome = nome;
-    this.descricao = descricao || '';
-    this.cor = cor || '#000000';
-    this.ativo = ativo;
-    
-    this.validar();
-  }
+import { CategoriaInvalidaException } from '../exceptions/DomainExceptions.js';
 
-  validar() {
-    if (!this.nome || this.nome.trim() === '') {
-      throw new Error("Categoria inválida ou não suportada");
+const VALORES = Object.freeze([
+  'ALIMENTACAO',
+  'TRANSPORTE',
+  'HOSPEDAGEM',
+  'LAZER',
+  'COMPRAS',
+  'SAUDE',
+  'OUTROS',
+]);
+
+class Categoria {
+  #valor;
+
+  constructor(valor) {
+    const normalizado = String(valor ?? '').trim().toUpperCase();
+
+    if (!VALORES.includes(normalizado)) {
+      throw new CategoriaInvalidaException(valor);
     }
-    if (this.nome.length > 50) {
-      throw new Error("O nome da categoria deve ter no máximo 50 caracteres.");
-    }
-    if (!/^#[0-9A-F]{6}$/i.test(this.cor)) {
-      throw new Error("A cor deve ser um hexadecimal válido (ex: #FF0000).");
-    }
+
+    this.#valor = normalizado;
   }
 
-  atualizarDados(nome, descricao, cor) {
-    this.nome = nome;
-    this.descricao = descricao;
-    this.cor = cor;
-    this.validar();
+  get valor() {
+    return this.#valor;
   }
 
-  desativar() {
-    this.ativo = false;
+  equals(outra) {
+    return outra instanceof Categoria && outra.valor === this.#valor;
   }
 
-  ativar() {
-    this.ativo = true;
+  toString() {
+    return this.#valor;
+  }
+
+  static listar() {
+    return [...VALORES];
   }
 }
 
+export { Categoria, VALORES as CATEGORIAS_VALIDAS };
 export default Categoria;
-

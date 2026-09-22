@@ -1,26 +1,20 @@
 class DashboardController {
-  constructor(obterDashboardFinanceiroQuery) {
+  constructor({ obterDashboardFinanceiroQuery }) {
     this.obterDashboardFinanceiroQuery = obterDashboardFinanceiroQuery;
   }
 
-  async obterResumo(req, res, next) {
+  obterPorViagem = async (req, res, next) => {
     try {
       const { viagemId } = req.params;
-      const { moeda } = req.query;
+      const { moedaPrincipal } = req.query;
 
-      const resultado = await this.obterDashboardFinanceiroQuery.execute({
-        viagemId,
-        moedaDestino: moeda
-      });
+      const dashboard = await this.obterDashboardFinanceiroQuery.executar({ viagemId, moedaPrincipal });
 
-      return res.status(200).json({
-        moedaBase: moeda,
-        total: resultado.total
-      });
+      return res.status(200).json(dashboard);
     } catch (error) {
-      next(error);
+      return next(error);
     }
-  }
+  };
 }
 
 export { DashboardController };

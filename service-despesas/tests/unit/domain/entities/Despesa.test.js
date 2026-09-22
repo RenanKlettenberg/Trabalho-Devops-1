@@ -1,29 +1,53 @@
-import { Despesa } from '../../../../src/domain/entities/Despesa.js';
+import Despesa from '../../../../src/domain/entities/Despesa.js';
+import {
+  ValorInvalidoException,
+  DespesaJaEstornadaException,
+} from '../../../../src/domain/exceptions/DomainExceptions.js';
 
-describe('Entidade: Despesa', () => {
-  it('deve instanciar uma despesa com dados válidos', () => {
-    const despesa = new Despesa({
-      descricao: 'Jantar em Paris',
-      valor: 150.0,
-      moedaOriginal: 'EUR',
-      categoria: 'ALIMENTACAO',
-      viagemId: 'v-123'
-    });
+const dadosValidos = {
+  descricao: 'Jantar',
+  valor: 100,
+  moeda: 'USD',
+  categoria: 'ALIMENTACAO',
+  viagemId: 'v1',
+};
 
-    expect(despesa).toBeDefined();
+describe('Despesa', () => {
+  it('cria uma despesa ATIVA com id e timestamps gerados', () => {
+    const despesa = Despesa.registrar(dadosValidos);
+
+    expect(despesa.id).toBeDefined();
     expect(despesa.status).toBe('ATIVA');
-    expect(despesa.valor).toBe(150.0);
+    expect(despesa.estaAtiva()).toBe(true);
+    expect(despesa.moeda.codigo).toBe('USD');
+    expect(despesa.categoria.valor).toBe('ALIMENTACAO');
+    expect(despesa.createdAt).toBeInstanceOf(Date);
   });
 
-  it('deve lançar um erro caso o valor da despesa seja menor ou igual a zero', () => {
-    expect(() => {
-      new Despesa({ valor: 0, moedaOriginal: 'BRL', categoria: 'OUTROS' });
-    }).toThrow('O valor da despesa deve ser maior que zero');
+  it.each([0, -10, 'abc', undefined, null])('rejeita valor inválido: %p', (valor) => {
+    expect(() => Despesa.registrar({ ...dadosValidos, valor })).toThrow(ValorInvalidoException);
   });
 
-  it('deve mudar o status para ESTORNADA quando o método cancelar() for chamado', () => {
-    const despesa = new Despesa({ /* ... dados mock ... */ valor: 10, moedaOriginal: 'BRL', categoria: 'EXTRA', viagemId: 'v-1', descricao: 'Teste' });
-    despesa.cancelar();
+  it('aceita eventoId opcional e o normaliza para string', () => {
+    const despesa = Despesa.registrar({ ...dadosValidos, eventoId: 123 });
+    expect(despesa.eventoId).toBe('123');
+  });
+
+  it('estorna uma despesa ativa e atualiza updatedAt', () => {
+    const despesa = Despesa.registrar(dadosValidos);
+    const updatedAtOriginal = despesa.updatedAt;
+
+    despesa.estornar();
+
     expect(despesa.status).toBe('ESTORNADA');
+    expect(despesa.estaAtiva()).toBe(false);
+    expect(despesa.updatedAt.getTime()).toBeGreaterThanOrEqual(updatedAtOriginal.getTime());
+  });
+
+  it('não permite estornar uma despesa já estornada', () => {
+    const despesa = Despesa.registrar(dadosValidos);
+    despesa.estornar();
+
+    expect(() => despesa.estornar()).toThrow(DespesaJaEstornadaException);
   });
 });

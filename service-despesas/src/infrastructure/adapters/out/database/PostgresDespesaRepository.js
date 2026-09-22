@@ -1,87 +1,84 @@
-import database from '../../../config/database.js';
+import DespesaRepository from '../../../../domain/repositories/DespesaRepository.js';
 import Despesa from '../../../../domain/entities/Despesa.js';
 
-const TABELA = 'despesas.despesas';
-const COLUNAS_ALIASADAS = `
-  des_id AS id,
-  des_descricao AS descricao,
-  des_valor AS valor,
-  des_moeda_original AS "moedaOriginal",
-  des_categoria AS categoria,
-  des_viagem_id AS "viagemId",
-  des_evento_id AS "eventoId",
-  des_status AS status
-`;
+function linhaParaDespesa(linha) {
+  if (!linha) return null;
 
-// O driver 'pg' devolve NUMERIC como string e as linhas são objetos simples;
-// reidrata para instâncias de Despesa para que métodos de domínio (ex: cancelar()) funcionem.
-function mapRowToDespesa(row) {
-  if (!row) return null;
-  return new Despesa({ ...row, valor: Number(row.valor) });
+  return new Despesa({
+    id: linha.des_id,
+    descricao: linha.des_descricao,
+    valor: Number(linha.des_valor),
+    moeda: linha.des_moeda_original,
+    categoria: linha.des_categoria,
+    viagemId: linha.des_viagem_id,
+    eventoId: linha.des_evento_id,
+    status: linha.des_status,
+    createdAt: linha.des_created_at,
+    updatedAt: linha.des_updated_at,
+  });
 }
 
-class PostgresDespesaRepository {
-  /**
-   * @param {Object} db - Pool de conexão do banco de dados (ex: pg, knex)
-   */
-  constructor(db = database) {
-    this.db = db;
+class PostgresDespesaRepository extends DespesaRepository {
+  constructor(database) {
+    super();
+    this.database = database;
   }
 
   async salvar(despesa) {
-    const query = `
-      INSERT INTO ${TABELA} (des_id, des_descricao, des_valor, des_moeda_original, des_categoria, des_viagem_id, des_evento_id, des_status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING ${COLUNAS_ALIASADAS};
+    const sql = `
+      INSERT INTO despesas.despesas (
+        des_id, des_descricao, des_valor, des_moeda_original,
+        des_categoria, des_viagem_id, des_evento_id, des_status, des_updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+      ON CONFLICT (des_id) DO UPDATE SET
+        des_descricao = EXCLUDED.des_descricao,
+        des_valor = EXCLUDED.des_valor,
+        des_moeda_original = EXCLUDED.des_moeda_original,
+        des_categoria = EXCLUDED.des_categoria,
+        des_viagem_id = EXCLUDED.des_viagem_id,
+        des_evento_id = EXCLUDED.des_evento_id,
+        des_status = EXCLUDED.des_status,
+        des_updated_at = NOW()
+      RETURNING *;
     `;
-    const values = [
-      despesa.id, despesa.descricao, despesa.valor, despesa.moedaOriginal,
-      despesa.categoria, despesa.viagemId, despesa.eventoId, despesa.status
+
+    const parametros = [
+      despesa.id,
+      despesa.descricao,
+      despesa.valor,
+      despesa.moeda.codigo,
+      despesa.categoria.valor,
+      despesa.viagemId,
+      despesa.eventoId,
+      despesa.status,
     ];
 
-    const result = await this.db.query(query, values);
-    return mapRowToDespesa(result.rows[0]);
+    const { rows } = await this.database.query(sql, parametros);
+    return linhaParaDespesa(rows[0]);
   }
 
   async buscarPorId(id) {
-    const query = `SELECT ${COLUNAS_ALIASADAS} FROM ${TABELA} WHERE des_id = $1`;
-    const result = await this.db.query(query, [id]);
-    return mapRowToDespesa(result.rows[0]);
+    const { rows } = await this.database.query(
+      'SELECT * FROM despesas.despesas WHERE des_id = $1',
+      [id]
+    );
+    return linhaParaDespesa(rows[0]);
   }
 
-  async buscarPorViagem(viagemId) {
-    const result = await this.db.query(
-      `SELECT ${COLUNAS_ALIASADAS} FROM ${TABELA} WHERE des_viagem_id = $1`,
+  async buscarPorViagemId(viagemId) {
+    const { rows } = await this.database.query(
+      'SELECT * FROM despesas.despesas WHERE des_viagem_id = $1 ORDER BY des_created_at ASC',
       [viagemId]
     );
-    return result.rows.map(mapRowToDespesa);
+    return rows.map(linhaParaDespesa);
   }
 
   async buscarPorEventoId(eventoId) {
-    const result = await this.db.query(
-      `SELECT ${COLUNAS_ALIASADAS} FROM ${TABELA} WHERE des_evento_id = $1`,
+    const { rows } = await this.database.query(
+      'SELECT * FROM despesas.despesas WHERE des_evento_id = $1 ORDER BY des_created_at ASC',
       [eventoId]
     );
-    return result.rows.map(mapRowToDespesa);
-  }
-
-  async atualizarEmLote(despesas) {
-    const client = await this.db.pool.connect();
-    try {
-      await client.query('BEGIN');
-      for (const despesa of despesas) {
-        await client.query(
-          `UPDATE ${TABELA} SET des_status = $1, des_updated_at = NOW() WHERE des_id = $2`,
-          [despesa.status, despesa.id]
-        );
-      }
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
+    return rows.map(linhaParaDespesa);
   }
 }
 

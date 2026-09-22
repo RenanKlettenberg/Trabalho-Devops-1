@@ -1,42 +1,53 @@
 import express from 'express';
-import errorMiddleware from './middlewares/error.middleware.js';
+import cors from 'cors';
+import errorMiddleware from './adapters/in/http/middlewares/error.middleware.js';
 
-import database from './config/database.js';
-import PostgresDespesaRepository from './adapters/out/database/PostgresDespesaRepository.js';
-import ExchangeRateApiAdapter from './adapters/out/external/exchange-api/ExchangeRateApiAdapter.js';
+import RegistrarDespesaCommand from '../application/use-cases/commands/RegistrarDespesa/RegistrarDespesaCommand.js';
+import EstornarDespesaCommand from '../application/use-cases/commands/EstornarDespesa/EstornarDespesaCommand.js';
+import ObterDespesaQuery from '../application/use-cases/queries/ObterDespesa/ObterDespesaQuery.js';
+import ObterDashboardFinanceiroQuery from '../application/use-cases/queries/ObterDashboardFinanceiro/ObterDashboardFinanceiroQuery.js';
 
-import RegistrarDespesaCommand from '../application/commands/RegistrarDespesa/RegistrarDespesaCommand.js';
-import ObterDespesaQuery from '../application/queries/ObterDespesa/ObterDespesaQuery.js';
-import ObterDashboardFinanceiroQuery from '../application/queries/ObterDashboardFinanceiro/ObterDashboardFinanceiroQuery.js';
+import DespesaController from './adapters/in/http/controllers/Despesa.Controller.js';
+import DashboardController from './adapters/in/http/controllers/Dashboard.Controller.js';
+import CategoriaController from './adapters/in/http/controllers/Categoria.Controller.js';
 
 import despesaRoutes from './adapters/in/http/routes/Despesa.Routes.js';
 import dashboardRoutes from './adapters/in/http/routes/Dashboard.Routes.js';
-import DashboardController from './adapters/in/http/controllers/Dashboard.Controller.js';
 
-const app = express();
+// Composição pura: recebe as dependências de I/O (repositório, provider de
+// câmbio) já prontas, para poder ser testada com supertest sem tocar em
+// banco/rede de verdade.
+function createApp({ despesaRepository, exchangeRateProvider }) {
+  const app = express();
 
-// Middlewares globais
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+  app.use(cors());
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
-// Composição das dependências (repositório único: despesa pertence a uma viagem;
-// a divisão entre participantes do grupo é responsabilidade do service-grupos)
-const despesaRepository = new PostgresDespesaRepository(database);
-const cambioRepository = new ExchangeRateApiAdapter();
+  const registrarDespesaCommand = new RegistrarDespesaCommand(despesaRepository);
+  const estornarDespesaCommand = new EstornarDespesaCommand(despesaRepository);
+  const obterDespesaQuery = new ObterDespesaQuery(despesaRepository);
+  const obterDashboardFinanceiroQuery = new ObterDashboardFinanceiroQuery(despesaRepository, exchangeRateProvider);
 
-const criarDespesaCommand = new RegistrarDespesaCommand(despesaRepository);
-const obterDespesaQuery = new ObterDespesaQuery(despesaRepository);
-const obterDashboardFinanceiroQuery = new ObterDashboardFinanceiroQuery(despesaRepository, cambioRepository);
-const dashboardController = new DashboardController(obterDashboardFinanceiroQuery);
+  const despesaController = new DespesaController({
+    registrarDespesaCommand,
+    obterDespesaQuery,
+    estornarDespesaCommand,
+    despesaRepository,
+  });
+  const dashboardController = new DashboardController({ obterDashboardFinanceiroQuery });
+  const categoriaController = new CategoriaController();
 
-// Rotas
-app.use('/api/despesas', despesaRoutes(criarDespesaCommand, obterDespesaQuery));
-app.use('/api/viagens', dashboardRoutes(dashboardController));
+  app.use('/api/despesas', despesaRoutes(despesaController, categoriaController));
+  app.use('/api/dashboard', dashboardRoutes(dashboardController));
 
-// Middleware de tratamento de erros (deve ser sempre o último 'use')
-app.use(errorMiddleware);
+  app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
 
-// Exportadas para o server.js poder ligar o consumer de mensageria (saga)
-// reaproveitando as mesmas instâncias, sem duplicar a composição.
-export { app, despesaRepository, criarDespesaCommand };
-export default app;
+  // Middleware de tratamento de erros (deve ser sempre o último 'use')
+  app.use(errorMiddleware);
+
+  return app;
+}
+
+export { createApp };
+export default createApp;

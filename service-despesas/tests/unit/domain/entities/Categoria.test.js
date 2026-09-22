@@ -1,41 +1,25 @@
-import { Categoria } from '../../../../src/domain/entities/Categoria.js';
+import Categoria, { CATEGORIAS_VALIDAS } from '../../../../src/domain/entities/Categoria.js';
+import { CategoriaInvalidaException } from '../../../../src/domain/exceptions/DomainExceptions.js';
 
-describe('Entidade de Domínio: Categoria', () => {
-  it('deve aceitar categorias padrão do sistema', () => {
-    expect(() => new Categoria({ id: '01', nome: 'ALIMENTACAO', descricao: 'Despesas com alimentação', cor: '#000000' ,ativo: true})).not.toThrow();
-    expect(() => new Categoria({ id: '02', nome: 'TRANSPORTE', descricao: 'Despesas com transporte', cor: '#000000' ,ativo: true})).not.toThrow();
-    expect(() => new Categoria({ id: '03', nome: 'HOSPEDAGEM', descricao: 'Despesas com hospedagem', cor: '#000000' ,ativo: true})).not.toThrow();
+describe('Categoria', () => {
+  it.each(CATEGORIAS_VALIDAS)('aceita a categoria válida %s', (valor) => {
+    expect(new Categoria(valor).valor).toBe(valor);
   });
 
-  it('deve lançar erro para categorias não mapeadas', () => {
-    expect(() => new Categoria('COMPRAS_ALEATORIAS')).toThrow('Categoria inválida ou não suportada');
+  it('normaliza para maiúsculas e remove espaços', () => {
+    expect(new Categoria(' alimentacao ').valor).toBe('ALIMENTACAO');
   });
 
-  it('deve lançar erro quando a cor não é um hexadecimal válido', () => {
-    expect(() => new Categoria({ nome: 'LAZER', cor: 'azul' })).toThrow('A cor deve ser um hexadecimal válido (ex: #FF0000).');
+  it.each(['VIAGEM_ESPACIAL', '', undefined, null])('rejeita categoria inválida: %p', (valor) => {
+    expect(() => new Categoria(valor)).toThrow(CategoriaInvalidaException);
   });
 
-  it('deve lançar erro quando o nome passa de 50 caracteres', () => {
-    expect(() => new Categoria({ nome: 'A'.repeat(51) })).toThrow('O nome da categoria deve ter no máximo 50 caracteres.');
+  it('listar() retorna todas as categorias válidas', () => {
+    expect(Categoria.listar()).toEqual(CATEGORIAS_VALIDAS);
   });
 
-  it('atualizarDados deve trocar nome, descrição e cor validando de novo', () => {
-    const categoria = new Categoria({ nome: 'LAZER', cor: '#123ABC' });
-
-    categoria.atualizarDados('LAZER_2', 'Nova descrição', '#FFFFFF');
-
-    expect(categoria.nome).toBe('LAZER_2');
-    expect(categoria.descricao).toBe('Nova descrição');
-    expect(categoria.cor).toBe('#FFFFFF');
-  });
-
-  it('desativar e ativar devem alternar a flag ativo', () => {
-    const categoria = new Categoria({ nome: 'LAZER', cor: '#123ABC' });
-
-    categoria.desativar();
-    expect(categoria.ativo).toBe(false);
-
-    categoria.ativar();
-    expect(categoria.ativo).toBe(true);
+  it('equals compara pelo valor', () => {
+    expect(new Categoria('LAZER').equals(new Categoria('lazer'))).toBe(true);
+    expect(new Categoria('LAZER').equals(new Categoria('SAUDE'))).toBe(false);
   });
 });

@@ -1,31 +1,32 @@
-export class Moeda {
-  constructor({ codigo, simbolo, taxaCambioBase = 1.0 }) {
-    this.codigo = codigo; // Ex: BRL, USD, EUR
-    this.simbolo = simbolo; // Ex: R$, $, €
-    this.taxaCambioBase = taxaCambioBase;
-    
-    this.validar();
+import { MoedaInvalidaException } from '../exceptions/DomainExceptions.js';
+
+const PADRAO_ISO_4217 = /^[A-Z]{3}$/;
+
+class Moeda {
+  #codigo;
+
+  constructor(codigo) {
+    const normalizado = String(codigo ?? '').trim().toUpperCase();
+
+    if (!PADRAO_ISO_4217.test(normalizado)) {
+      throw new MoedaInvalidaException(codigo);
+    }
+
+    this.#codigo = normalizado;
   }
 
-  validar() {
-    if (!this.codigo || this.codigo.length !== 3) {
-      throw new Error("Moeda não suportada");
-    }
-    if (!this.simbolo || this.simbolo.trim() === '') {
-      throw new Error("O símbolo da moeda é obrigatório.");
-    }
-    if (this.taxaCambioBase <= 0) {
-      throw new Error("A taxa de câmbio base deve ser maior que zero.");
-    }
+  get codigo() {
+    return this.#codigo;
   }
 
-  atualizarTaxa(novaTaxa) {
-    if (novaTaxa <= 0) {
-      throw new Error("A nova taxa de câmbio deve ser maior que zero.");
-    }
-    this.taxaCambioBase = novaTaxa;
+  equals(outra) {
+    return outra instanceof Moeda && outra.codigo === this.#codigo;
+  }
+
+  toString() {
+    return this.#codigo;
   }
 }
 
+export { Moeda };
 export default Moeda;
-

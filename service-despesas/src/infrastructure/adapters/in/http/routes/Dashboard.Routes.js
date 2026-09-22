@@ -1,10 +1,15 @@
-import express from 'express';
+import { Router } from 'express';
+import authMiddleware from '../middlewares/auth.middleware.js';
 
-// Montada em /api/viagens -> GET /api/viagens/:viagemId/dashboard?moeda=BRL
-export default (dashboardController) => {
-  const router = express.Router();
+function dashboardRoutes(dashboardController) {
+  const router = Router();
 
-  router.get('/:viagemId/dashboard', (req, res, next) => dashboardController.obterResumo(req, res, next));
+  router.use(authMiddleware);
+
+  router.get('/:viagemId', dashboardController.obterPorViagem);
 
   return router;
-};
+}
+
+export { dashboardRoutes };
+export default dashboardRoutes;

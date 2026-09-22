@@ -1,28 +1,46 @@
 import 'dotenv/config';
-import app, { despesaRepository, criarDespesaCommand } from './app.js';
-import RabbitMQPublisher from './adapters/out/messaging/publishers/RabbitMQPublisher.js';
-import CompensarDespesasCommandHandler from './adapters/in/messaging/listeners/CompensarDespesasCommandHandler.js';
-import iniciarConsumerDespesa from './adapters/in/messaging/consumers/DespesaConsumer.js';
+import amqp from 'amqplib';
 
-const PORT = process.env.PORT || 3000;
+import createApp from './app.js';
+import database from './config/database.js';
 
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
-});
+import PostgresDespesaRepository from './adapters/out/database/PostgresDespesaRepository.js';
+import RedisCacheAdapter from './adapters/out/cache/RedisCacheAdapter.js';
+import ExchangeRateApiAdapter from './adapters/out/external/ExchangeRateApiAdapter.js';
 
-async function iniciarConsumerSaga() {
-  const publisher = new RabbitMQPublisher();
-  await publisher.conectar();
+import RegistrarDespesaCommand from '../application/use-cases/commands/RegistrarDespesa/RegistrarDespesaCommand.js';
+import CompensarDespesaCommand from '../application/use-cases/commands/CompensarDespesa/CompensarDespesaCommand.js';
 
-  const compensarDespesa = new CompensarDespesasCommandHandler(despesaRepository, publisher);
+import DespesaConsumer from './adapters/in/messaging/consumers/DespesaConsumer.js';
+import CompensarDespesasCommandHandler from './adapters/in/messaging/consumers/CompensarDespesasCommandHandler.js';
 
-  await iniciarConsumerDespesa({
-    registrarDespesa: criarDespesaCommand,
-    compensarDespesa
+const PORT = process.env.PORT || 3003;
+const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672';
+
+async function start() {
+  const despesaRepository = new PostgresDespesaRepository(database);
+  const cacheProvider = new RedisCacheAdapter();
+  const exchangeRateProvider = new ExchangeRateApiAdapter(cacheProvider);
+
+  const app = createApp({ despesaRepository, exchangeRateProvider });
+
+  const conexaoRabbit = await amqp.connect(RABBITMQ_URL);
+  const canalRabbit = await conexaoRabbit.createChannel();
+  console.log('[service-despesas] Conectado ao RabbitMQ.');
+
+  const registrarDespesaCommand = new RegistrarDespesaCommand(despesaRepository);
+  const compensarDespesaCommand = new CompensarDespesaCommand(despesaRepository);
+
+  await new DespesaConsumer(canalRabbit, registrarDespesaCommand).iniciar();
+  await new CompensarDespesasCommandHandler(canalRabbit, compensarDespesaCommand).iniciar();
+
+  app.listen(PORT, () => {
+    console.log(`🚀 service-despesas rodando na porta ${PORT}`);
+    console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
   });
 }
 
-iniciarConsumerSaga().catch((erro) => {
-  console.error('[service-despesas] Falha ao iniciar consumer da saga:', erro);
+start().catch((erro) => {
+  console.error('[service-despesas] Falha ao iniciar:', erro);
+  process.exit(1);
 });

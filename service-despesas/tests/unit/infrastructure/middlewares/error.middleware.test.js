@@ -1,45 +1,49 @@
 import { jest } from '@jest/globals';
-import errorMiddleware from '../../../../src/infrastructure/middlewares/error.middleware.js';
+import errorMiddleware from '../../../../src/infrastructure/adapters/in/http/middlewares/error.middleware.js';
 import AppError from '../../../../src/infrastructure/exceptions/AppError.js';
+import { ValorInvalidoException, DespesaJaEstornadaException } from '../../../../src/domain/exceptions/DomainExceptions.js';
 
-function criarResposta() {
+function criarResMock() {
   const res = {};
-  res.status = jest.fn().mockReturnValue(res);
-  res.json = jest.fn().mockReturnValue(res);
+  res.status = jest.fn(() => res);
+  res.json = jest.fn(() => res);
   return res;
 }
 
-describe('AppError', () => {
-  it('deve usar 400 como statusCode padrão quando não informado', () => {
-    const erro = new AppError('Requisição inválida');
+describe('errorMiddleware', () => {
+  let res;
+  const req = {};
+  const next = jest.fn();
 
-    expect(erro.statusCode).toBe(400);
-    expect(erro.isOperational).toBe(true);
-  });
-});
-
-describe('Middleware: errorMiddleware', () => {
-  it('deve responder com o statusCode e a mensagem de um AppError', () => {
-    const erro = new AppError('Despesa inválida', 422);
-    const res = criarResposta();
-
-    errorMiddleware(erro, {}, res, jest.fn());
-
-    expect(res.status).toHaveBeenCalledWith(422);
-    expect(res.json).toHaveBeenCalledWith({ status: 'error', message: 'Despesa inválida' });
+  beforeEach(() => {
+    res = criarResMock();
+    jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
-  it('deve responder 500 genérico para um erro inesperado, sem vazar a mensagem original', () => {
-    const erro = new Error('conexão recusada em algum detalhe interno do banco');
-    const res = criarResposta();
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  afterEach(() => {
+    console.error.mockRestore();
+  });
 
-    errorMiddleware(erro, {}, res, jest.fn());
+  it('responde com o statusCode de um AppError', () => {
+    errorMiddleware(new AppError('não autorizado', 401), req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ status: 'error', message: 'não autorizado' });
+  });
+
+  it('mapeia DomainException para o status correto usando o código', () => {
+    errorMiddleware(new ValorInvalidoException(-1), req, res, next);
+    expect(res.status).toHaveBeenCalledWith(400);
+
+    res = criarResMock();
+    errorMiddleware(new DespesaJaEstornadaException('id-1'), req, res, next);
+    expect(res.status).toHaveBeenCalledWith(409);
+  });
+
+  it('responde 500 para erros inesperados sem vazar detalhes internos', () => {
+    errorMiddleware(new Error('falha de conexão com o banco'), req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({ status: 'error', message: 'Erro interno do servidor' });
-    expect(consoleSpy).toHaveBeenCalled();
-
-    consoleSpy.mockRestore();
   });
 });

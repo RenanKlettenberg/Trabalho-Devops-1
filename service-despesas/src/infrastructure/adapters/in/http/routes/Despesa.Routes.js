@@ -1,13 +1,19 @@
-import express from 'express';
-import DespesaController from '../controllers/Despesa.Controller.js';
+import { Router } from 'express';
+import authMiddleware from '../middlewares/auth.middleware.js';
 
-// Nota: Em uma aplicação real, a injeção de dependências seria feita por um container (ex: Awilix, Inversify)
-export default (criarDespesaCommand, obterDespesaQuery) => {
-  const router = express.Router();
-  const despesaController = new DespesaController(criarDespesaCommand, obterDespesaQuery);
+function despesaRoutes(despesaController, categoriaController) {
+  const router = Router();
 
-  router.post('/', (req, res) => despesaController.criar(req, res));
-  router.get('/:id', (req, res) => despesaController.obterPorId(req, res));
+  router.use(authMiddleware);
+
+  router.post('/', despesaController.registrar);
+  router.get('/categorias', categoriaController.listar);
+  router.get('/viagem/:viagemId', despesaController.listarPorViagem);
+  router.get('/:id', despesaController.obterPorId);
+  router.delete('/:id', despesaController.estornar);
 
   return router;
-};
+}
+
+export { despesaRoutes };
+export default despesaRoutes;

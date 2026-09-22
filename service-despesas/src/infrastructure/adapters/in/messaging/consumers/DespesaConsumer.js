@@ -1,60 +1,27 @@
-import amqp from 'amqplib';
+import responderComandos from '../RabbitMQRpcResponder.js';
+import * as despesaDto from '../../../../../application/dtos/Despesa.dto.js';
 
-/* O consumer adapta RabbitMQ para os handlers da aplicação. */
-export async function iniciarConsumerDespesa({
-  registrarDespesa,
-  compensarDespesa,
-  url = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672'
-}) {
-  const connection = await amqp.connect(url);
+const FILA_COMANDO = 'cmd_registrar_despesa';
 
-  const channel = await connection.createChannel();
-
-  const filasParaConsumir = [
-    'cmd_registrar_despesa',
-    'cmd_cancelar_despesa'
-  ];
-
-  for (const fila of filasParaConsumir) {
-    await channel.assertQueue(fila, { durable: true });
+/**
+ * Requisito 1 (via SAGA): recebe cmd_registrar_despesa do
+ * service-orquestrador e responde em resposta_registrar_despesa.
+ */
+class DespesaConsumer {
+  constructor(channel, registrarDespesaCommand) {
+    this.channel = channel;
+    this.registrarDespesaCommand = registrarDespesaCommand;
   }
 
-  channel.consume('cmd_registrar_despesa', async (msg) => {
-    if (!msg) return;
+  async iniciar() {
+    await responderComandos(this.channel, FILA_COMANDO, async (payload) => {
+      const despesa = await this.registrarDespesaCommand.executar(payload);
+      return { status: 'SUCESSO', despesa: despesaDto.paraResposta(despesa) };
+    });
 
-    try {
-      const payload = JSON.parse(msg.content.toString());
-      const despesa = await registrarDespesa.execute(payload);
-      const resposta = {
-        sagaId: msg.properties.correlationId,
-        status: 'SUCESSO',
-        evento: 'DESPESA_REGISTRADA',
-        despesaId: despesa.id
-      };
-      const filaResposta = msg.properties.replyTo || 'resposta_registrar_despesa';
-      await channel.assertQueue(filaResposta, { durable: true });
-      channel.sendToQueue(filaResposta, Buffer.from(JSON.stringify(resposta)), { persistent: true });
-      channel.ack(msg);
-    } catch (error) {
-      channel.nack(msg, false, false);
-      console.error('[service-despesas] Falha ao registrar despesa:', error);
-    }
-  });
-
-  channel.consume('cmd_cancelar_despesa', async (msg) => {
-    if (!msg) return;
-
-    try {
-      await compensarDespesa.processarComando(msg);
-      channel.ack(msg);
-    } catch (error) {
-      channel.nack(msg, false, false);
-      console.error('[service-despesas] Falha ao compensar despesa:', error);
-    }
-  });
-
-  console.log('[service-despesas] Consumer conectado às filas da saga.');
-  return { connection, channel };
+    console.log(`[DespesaConsumer] Ouvindo fila "${FILA_COMANDO}".`);
+  }
 }
 
-export default iniciarConsumerDespesa;
+export { DespesaConsumer };
+export default DespesaConsumer;
