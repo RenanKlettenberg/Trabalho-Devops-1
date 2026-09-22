@@ -29,11 +29,12 @@ function criarServiceEvento(repository, despesaClient) {
         if (evento.eve_orcamento > 0) {
             try {
                 const despesa = await despesaClient.criarDespesa({
-                    des_valor: evento.eve_orcamento,
-                    eve_id: evento.eve_id,
-                    via_id: evento.via_id,
+                    descricao: evento.eve_descricao,
+                    categoria: evento.eve_categoria,
+                    valor: evento.eve_orcamento,
+                    eventoId: evento.eve_id,
+                    viagemId: evento.via_id,
                 });
-                await repository.atualizarDespesaVinculada?.(evento.eve_id, despesa.des_id);
             } catch (err) {
                 await repository.marcarFalhaSincronizacaoDespesa(evento.eve_id);
             }
