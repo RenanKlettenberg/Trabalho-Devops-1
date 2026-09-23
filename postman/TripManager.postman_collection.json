@@ -190,6 +190,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "url": {
@@ -246,6 +250,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "url": {
@@ -265,10 +273,60 @@
           }
         },
         {
+          "name": "Despesas da viagem (PROVA do evento)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const lista = pm.response.json();",
+                  "",
+                  "pm.test('A despesa do evento foi criada', function () {",
+                  "    pm.expect(lista).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "",
+                  "// A despesa nasceu do evento, entao carrega o eventoId dele.",
+                  "pm.test('A despesa veio de um evento', function () {",
+                  "    pm.expect(lista[0].eventoId).to.not.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{url_gateway}}/api/despesas/viagem/{{via_id}}",
+              "host": [
+                "{{url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "despesas",
+                "viagem",
+                "{{via_id}}"
+              ]
+            },
+            "description": "A PROVA de que o evento com orcamento virou despesa em OUTRO servico.\n\nRode logo depois de 'Criar evento com orcamento'. Esperado: a lista\ntraz a despesa 'Hotel na Lagoa', valor 450, categoria HOSPEDAGEM.\n\nRepare no campo eventoId: e o eve_id do evento que a originou. E o\nunico vinculo entre os dois servicos - cada um tem seu banco.\n\nO CAMINHO:\n  POST /api/v1/evento           -> service-viagens grava o evento\n  publica em service_viagem/despesa (fila)\n  ViagemEventoConsumer          -> service-despesas cria a despesa\n\nRepare que a resposta do POST do evento voltou 200 ANTES da despesa\nexistir: e fire-and-forget, ninguem espera resposta. Por isso a\ndespesa aparece com um pequeno atraso - e por isso esta verificacao\ne uma requisicao separada.\n\nDIFERENCA PARA A SAGA: aqui nao ha orquestrador, nao ha resposta e\nnao ha compensacao. Se a criacao da despesa falhar, o evento fica\ncom eve_sync_despesa_status = 2 e ninguem e avisado."
+          }
+        },
+        {
           "name": "Listar viagens",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{url_usuario}}/viagem",
               "host": [
@@ -595,6 +653,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "url": {
@@ -622,6 +684,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "url": {
@@ -645,7 +711,12 @@
           "name": "Consultar saga por id",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{url_orquestrador}}/sagas/{{saga_id}}",
               "host": [
@@ -913,6 +984,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "url": {
