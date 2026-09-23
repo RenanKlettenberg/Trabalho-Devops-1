@@ -1,7 +1,8 @@
 # service-grupos
 
 Gestão de grupos de viagem, participantes e divisão de custos. Participa da
-saga de registro de despesas como **passo de validação**.
+saga de registro de despesas em dois passos: **valida o grupo** antes da
+despesa existir e **grava o rateio** depois que ela é criada.
 
 - Acesso: **http://localhost:8080** (pelo API Gateway) — base das rotas: `/api/v1`
 - Porta interna: `3002`, alcançável só pelos outros containers. O serviço não
@@ -18,80 +19,66 @@ inteira e fica em [postman/](../postman/), na raiz do projeto.
 ## O papel deste serviço na saga
 
 O contrato de mensagens está em `service-orquestrador/ExemploSaga/README.md`.
-Segundo ele, o service-grupos entra na saga como um passo de **validação,
-somente leitura**:
+A `RegistrarDespesaSaga` tem três passos, dois deles neste serviço:
 
 | Ordem | Passo | Serviço | Escreve? |
 | :--- | :--- | :--- | :--- |
 | 1º | `VALIDAR_GRUPO` | **service-grupos** | não, só lê |
 | 2º | `REGISTRAR_DESPESA` | service-despesas | sim |
+| 3º | `VINCULAR_DESPESA_GRUPO` | **service-grupos** | **sim** |
 
-O passo 1 só roda quando a despesa vem com `gruId` — despesa pessoal pula este
-serviço.
+Os passos 1 e 3 só rodam quando a despesa vem com `gruId` — despesa pessoal
+pula este serviço.
+
+O passo 3 precisa do `des_id` gerado no passo 2, então o orquestrador encadeia
+o resultado de um passo no payload do seguinte.
 
 Este serviço **não conversa diretamente com nenhum outro microsserviço**. Ele
 fala só com o orquestrador, via filas. Não há cliente HTTP nas dependências, e
 isso é proposital: no SAGA orquestrado, os participantes conhecem apenas o
 coordenador.
 
-### Por que não há compensação ativa
+### A compensação, e por que ela é necessária
 
-Uma compensação desfaz o que um passo escreveu. Como o único passo deste
-serviço na saga **só lê**, não há o que desfazer:
+Uma compensação desfaz o que um passo escreveu. Como o passo 3 **grava** o
+rateio no banco deste serviço, existe estado para desfazer:
 
-- Passo 1 falha → nada foi escrito por ninguém.
-- Passo 2 falha → o passo 1 apenas leu.
+- Passo 1 falha → nada foi escrito por ninguém, a saga aborta.
+- Passo 2 falha → o passo 1 apenas leu, nada a desfazer.
+- **Passo 3 falha** → a despesa do passo 2 já existe e fica órfã. A saga
+  registra a falha, e o estorno é feito pela `CancelarDespesaSaga`.
 
-Nenhuma ordem de execução dessa saga deixa estado sujo. O README do contrato diz
-o mesmo, com todas as letras: *"como os passos de validação são só leitura,
-não é necessário nenhum passo de compensação para eles"*.
+Quando a despesa é cancelada, a `CancelarDespesaSaga` recupera o `gruId` da
+saga original e publica `cmd_desvincular_despesa_grupo` para cada despesa
+estornada. Do lado de cá, `desvincularDespesa` apaga os vínculos.
 
-A compensação existe no projeto (`CancelarDespesaSaga` → `cmd_cancelar_despesa`),
-mas atinge o service-despesas, não este serviço.
+Esse passo é **idempotente de propósito**: desvincular uma despesa que já não
+tem vínculo responde `SUCESSO` com `vinculosRemovidos: 0`, em vez de erro. O
+RabbitMQ pode entregar a mesma mensagem mais de uma vez, e uma compensação que
+quebra ao repetir trava a saga inteira.
 
 ---
 
-## Filas: ativo vs sobreaviso
+## Filas
 
-**Nem toda fila deste serviço tem alguém do outro lado hoje.** Isso é
-intencional. A tabela abaixo é a referência — a mesma está no topo de
+A tabela abaixo é a referência — a mesma está no topo de
 [src/consumer/saga.consumer.js](src/consumer/saga.consumer.js).
 
-| Fila | Status | Situação |
+| Fila | Status | Quem publica |
 | :--- | :--- | :--- |
-| `cmd_validar_grupo` | **ATIVO** | O orquestrador chama a cada `POST /api/sagas/despesas` com `gruId` |
-| `cmd_vincular_despesa_grupo` | SOBREAVISO | Passo de escrita: grava o rateio. Implementado e testado, sem chamador |
-| `cmd_desvincular_despesa_grupo` | SOBREAVISO | Compensação do passo acima. Idempotente de propósito |
-| `service_despesa/grupos` | SOBREAVISO | Evento `DESPESA_CANCELADA`. O service-despesas não o publica hoje |
+| `cmd_validar_grupo` | **ATIVO** | orquestrador, passo 1 da `RegistrarDespesaSaga` |
+| `cmd_vincular_despesa_grupo` | **ATIVO** | orquestrador, passo 3 da `RegistrarDespesaSaga` |
+| `cmd_desvincular_despesa_grupo` | **ATIVO** | orquestrador, compensação na `CancelarDespesaSaga` |
+| `service_despesa/grupos` | SOBREAVISO | ninguém — o cancelamento vem pela saga, não por evento |
 
 As filas `resposta_*` são declaradas mas nunca consumidas aqui — quem as lê é o
 orquestrador.
 
-### O que "SOBREAVISO" quer dizer
+### Exercitar as filas à mão
 
-Código implementado, testado e funcionando, que **nenhum passo da saga atual
-invoca**. Não é implementação pela metade: é a preparação para o dia em que a
-saga ganhar um passo que escreve neste serviço. O momento em que a compensação
-passa a ser obrigatória é quando a saga virar algo como:
-
-```
-1. VALIDAR_GRUPO           (lê)
-2. REGISTRAR_DESPESA       (grava no despesas)
-3. VINCULAR_DESPESA_GRUPO  (grava AQUI)      ← escrita neste serviço
-4. NOTIFICAR_USUARIOS      (pode falhar)
-```
-
-Se o passo 4 falhasse, os vínculos gravados no passo 3 ficariam órfãos. É
-exatamente para isso que o `desvincularDespesa` já existe.
-
-Para ligar esse passo, basta acrescentar um item na lista de
-`RegistrarDespesaSaga.passos()`, no orquestrador — **nada muda neste serviço**.
-
-### Como exercitar as filas de sobreaviso
-
-Como ninguém publica nelas, publique você, pelo painel do RabbitMQ em
+Dá para publicar direto na fila pelo painel do RabbitMQ em
 http://localhost:15672 (`guest` / `guest`) → **Queues and Streams** → clique na
-fila → **Publish message**.
+fila → **Publish message**. Útil para testar sem subir a saga inteira.
 
 Envio (`cmd_vincular_despesa_grupo`):
 
@@ -106,9 +93,7 @@ Compensação (`cmd_desvincular_despesa_grupo`):
 ```
 
 Publique a compensação **duas vezes**: na segunda ela responde `SUCESSO` com
-`vinculosRemovidos: 0` em vez de dar erro. Essa é a idempotência exigida pelo
-padrão — o RabbitMQ pode entregar a mesma mensagem mais de uma vez, e uma
-compensação que quebra ao repetir trava a saga.
+`vinculosRemovidos: 0` em vez de dar erro. É a idempotência exigida pelo padrão.
 
 > Atenção ao `snake_case`. Só o `validarGrupo` aceita `gruId` em camelCase (há
 > uma tradução na borda do consumer, porque é o formato que o orquestrador usa).

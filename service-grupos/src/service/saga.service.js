@@ -31,9 +31,6 @@ function criarServiceSaga({
         return { gru_id, participantes: elegiveis.length };
     }
 
-    /*
-     sobreaviso
-    */
     async function vincularDespesa({ gru_id, des_id, valor, participantes }) {
         validarComando({ gru_id, des_id, valor });
 

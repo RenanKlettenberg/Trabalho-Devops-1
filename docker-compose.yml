@@ -15,7 +15,16 @@ services:
     ports:
       - "8080:80"
     volumes:
+      # Config principal: existe só porque `load_module` e `js_import` não
+      # funcionam dentro de conf.d. É ela que inclui o nginx.conf abaixo.
+      - ./api-gateway/nginx-main.conf:/etc/nginx/nginx.conf:ro
       - ./api-gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Validador de JWT em njs
+      - ./api-gateway/auth.js:/etc/nginx/njs/auth.js:ro
+    secrets:
+      # O gateway valida a assinatura do token, então precisa do mesmo
+      # segredo que o service-usuario usa para assiná-lo.
+      - SECRET_JWT
     depends_on:
       # Declara a relação, mas o gateway NÃO depende deles para subir: o
       # `resolver` do nginx.conf resolve os nomes a cada requisição, então
