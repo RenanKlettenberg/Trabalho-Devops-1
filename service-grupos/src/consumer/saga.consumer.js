@@ -12,20 +12,34 @@
 */
 
 
+/*
+  Este serviço participa da RegistrarDespesaSaga em DOIS passos:
+
+    1. VALIDAR_GRUPO            cmd_validar_grupo        (lê)
+    2. REGISTRAR_DESPESA        -> service-despesas      (grava)
+    3. VINCULAR_DESPESA_GRUPO   cmd_vincular_despesa_grupo (grava AQUI)
+
+  Como o passo 3 escreve, a compensação é obrigatória: ao cancelar a despesa,
+  a CancelarDespesaSaga publica cmd_desvincular_despesa_grupo para desfazer o
+  rateio. Por isso desvincularDespesa é idempotente.
+*/
 export const FILAS = Object.freeze({
-    // ATIVO — passo de validação da saga (antes da despesa existir), contrato
+    // Passo 1 da saga: valida o grupo antes da despesa existir. Só leitura.
     CMD_VALIDAR: 'cmd_validar_grupo',
     RESPOSTA_VALIDAR: 'resposta_validar_grupo',
 
-    // SOBREAVISO — comandos de escrita/compensação, sem chamador hoje
+    // Passo 3 da saga: grava o rateio, com o des_id gerado no passo 2.
     CMD_VINCULAR: 'cmd_vincular_despesa_grupo',
+    // Compensação do passo 3, publicada pela CancelarDespesaSaga.
     CMD_DESVINCULAR: 'cmd_desvincular_despesa_grupo',
 
     // Filas de resposta usadas quando a mensagem não traz um `replyTo`
     RESPOSTA_VINCULAR: 'resposta_vincular_despesa_grupo',
     RESPOSTA_DESVINCULAR: 'resposta_desvincular_despesa_grupo',
 
-    // SOBREAVISO — evento que o service-despesas publicaria ao cancelar uma despesa
+    // SOBREAVISO — evento que o service-despesas publicaria ao cancelar uma
+    // despesa (Event-Driven, sem resposta). Hoje o cancelamento vem pela
+    // saga, em cmd_desvincular_despesa_grupo, então ninguém publica aqui.
     EVENTOS_DESPESA: 'service_despesa/grupos',
 });
 

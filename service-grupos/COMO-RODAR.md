@@ -26,11 +26,12 @@ docker compose ps
 docker compose logs service-grupos
 ```
 
-Se for a primeira vez, ou depois de um `down -v`, criar as tabelas:
+As tabelas nascem sozinhas: todos os bancos montam o `init.sql` do serviço.
+
+Depois de subir, reinicie os dois serviços que não têm laço de retentativa:
 
 ```cmd
-docker exec -i trabalho-devops-1-db-grupos-1 psql -U usuario -d grupos_db < service-grupos\init.sql
-docker exec -i trabalho-devops-1-db-usuario-1 psql -U usuario -d banco < service-usuario\init.sql
+docker compose restart service-despesas service-orquestrador
 ```
 
 ---
@@ -217,39 +218,30 @@ gateway roteou.
 
 ---
 
-## Passo 4 — Criar as tabelas
+## Passo 4 — Conferir as tabelas
 
-Necessário na primeira vez e **sempre depois de um `docker compose down -v`**.
+**Você não precisa criar as tabelas à mão.** Todos os cinco bancos montam o
+`init.sql` do serviço no `docker-compose.yml`:
 
-O `docker-compose.yml` monta o `init.sql` automaticamente só para dois bancos
-(`db-despesas` e `db-orquestrador`). O `db-grupos` e o `db-usuario` não têm essa
-linha, então sobem vazios.
-
-```cmd
-docker exec -i trabalho-devops-1-db-grupos-1 psql -U usuario -d grupos_db < service-grupos\init.sql
-docker exec -i trabalho-devops-1-db-usuario-1 psql -U usuario -d banco < service-usuario\init.sql
+```yaml
+volumes:
+  - ./service-grupos/init.sql:/docker-entrypoint-initdb.d/init.sql
 ```
 
-- `docker exec` — executa um comando **dentro** de um container que já roda.
-- `-i` — mantém a entrada aberta, o que permite ao `<` empurrar o arquivo para
-  dentro do container.
-- `psql -U usuario -d grupos_db` — cliente do Postgres, como usuário `usuario`.
+O Postgres executa esse arquivo **na primeira vez que o volume é criado** — ou
+seja, depois de um `docker compose down -v`. Se o volume já existe, ele ignora.
 
-O segundo comando é o banco de usuários, necessário porque o login (que gera o
-token JWT) mora no `service-usuario`.
-
-Esperado: `CREATE SCHEMA` seguido de três `CREATE TABLE`.
-
-> **No PowerShell o `<` não funciona.** Lá seria:
-> `Get-Content service-grupos\init.sql | docker exec -i trabalho-devops-1-db-grupos-1 psql -U usuario -d grupos_db`
-
-**Conferir:**
+Conferir:
 
 ```cmd
 docker exec trabalho-devops-1-db-grupos-1 psql -U usuario -d grupos_db -c "\dt grupos.*"
 ```
 
 Esperado: `grupos`, `participantes` e `despesa_participante`.
+
+> Se as tabelas não existirem, o volume foi criado antes do mount ter sido
+> adicionado. Resolve com `docker compose down -v` seguido de
+> `docker compose up -d` — mas atenção, isso apaga os dados de todos os bancos.
 
 ---
 
@@ -582,10 +574,19 @@ docker compose up -d
 
 **Sintoma:** a API responde 500 em qualquer rota que toca o banco.
 
-**Causa:** o `db-grupos` não monta o `init.sql` no `docker-compose.yml`. Depois
-de um `docker compose down -v`, o banco sobe vazio.
+**Causa:** o volume do banco foi criado ANTES de o `init.sql` passar a ser
+montado no `docker-compose.yml`. O Postgres só executa esse arquivo na primeira
+vez que o volume nasce — se ele já existia, o arquivo é ignorado.
 
-**Conserto:** o Passo 4.
+**Conserto:** recriar o volume.
+
+```cmd
+docker compose down -v
+docker compose up -d
+docker compose restart service-despesas service-orquestrador
+```
+
+Atenção: isso apaga os dados de **todos** os bancos.
 
 ---
 
@@ -596,6 +597,34 @@ de um `docker compose down -v`, o banco sobe vazio.
 **Causa:** `secrets/*.txt` e os `.env` não vão para o Git.
 
 **Conserto:** ver "Antes de começar", no topo deste arquivo.
+
+---
+
+### Evento com orçamento não gera despesa
+
+**Sintoma:** você cria um evento com `eve_orcamento` maior que zero no
+service-viagens, a resposta é 200, mas nenhuma despesa aparece no
+service-despesas.
+
+**Causa:** falta `RABBITMQ_URL` no `service-viagens/.env`. Sem ela, o serviço
+tenta `localhost:5672` dentro do próprio container, falha ao publicar, e o erro
+é engolido por um `catch` — a resposta HTTP continua 200.
+
+**Como confirmar:** o evento fica com `eve_sync_despesa_status = 2` no banco.
+
+```cmd
+docker exec trabalho-devops-1-db-viagens-1 psql -U usuario -d viagens_db -c "SELECT eve_id, eve_sync_despesa_status FROM viagem.eventos;"
+```
+
+**Conserto:** recopie o `.env` do exemplo e recrie o container.
+
+```cmd
+copy service-viagens\.env.example service-viagens\.env
+docker compose up -d service-viagens
+```
+
+> Vale para qualquer `.env`: eles não vão para o Git, então quando alguém
+> atualiza um `.env.example`, cada um precisa recopiar o seu.
 
 ---
 

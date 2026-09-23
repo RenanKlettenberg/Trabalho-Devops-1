@@ -60,6 +60,14 @@
     {
       "key": "despesa_id",
       "value": ""
+    },
+    {
+      "key": "eve_id",
+      "value": ""
+    },
+    {
+      "key": "par_id_isento",
+      "value": ""
     }
   ],
   "item": [
@@ -214,6 +222,47 @@
               }
             }
           ]
+        },
+        {
+          "name": "Criar evento com orcamento (gera despesa por EVENTO)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.payload && body.payload.eve_id) {",
+                  "    pm.collectionVariables.set('eve_id', body.payload.eve_id);",
+                  "}",
+                  "pm.test('Evento criado', function () { pm.expect(body.code).to.eql('1'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{url_usuario}}/evento",
+              "host": [
+                "{{url_usuario}}"
+              ],
+              "path": [
+                "evento"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eve_nome\": \"Check-in hotel\",\n  \"eve_descricao\": \"Hotel na Lagoa\",\n  \"eve_categoria\": 2,\n  \"eve_data_estimatida\": true,\n  \"eve_orcamento\": 450,\n  \"via_id\": {{via_id}},\n  \"usu_id\": 1\n}"
+            },
+            "description": "TERCEIRO PADRAO DE COMUNICACAO: evento assincrono (nao e saga).\n\nEvento com eve_orcamento > 0 faz o service-viagens publicar na fila\nservice_viagem/despesa. O service-despesas consome (ViagemEventoConsumer)\ne cria a despesa correspondente.\n\nDiferenca para a saga:\n  - nao passa pelo orquestrador\n  - e fire-and-forget: ninguem espera resposta\n  - a resposta HTTP volta 200 na hora, antes da despesa existir\n\nPor isso a despesa aparece com um pequeno atraso. Confira na pasta\nde Despesas, ou no log:\n  docker compose logs --tail 5 service-despesas\n\neve_categoria: 1=TRANSPORTE, 2=HOSPEDAGEM, 3=LAZER\n\nSE A DESPESA NAO APARECER: falta RABBITMQ_URL no service-viagens/.env.\nO erro e engolido por um catch e a resposta continua 200 - ver a secao\nde erros em service-grupos/COMO-RODAR.md."
+          }
         },
         {
           "name": "Listar viagens",
@@ -434,7 +483,21 @@
               "raw": "{\n  \"gru_id\": {{gru_id}},\n  \"par_nome\": \"Crianca (nao paga)\",\n  \"par_isento\": true\n}"
             },
             "description": "Participante isento aparece no grupo mas NAO recebe valor na divisao. Bom para testar a regra do calculo."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.payload && body.payload.par_id) {",
+                  "    pm.collectionVariables.set('par_id_isento', body.payload.par_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Listar participantes do grupo",
@@ -505,9 +568,23 @@
                 "exec": [
                   "const body = pm.response.json();",
                   "if (body.id) { pm.collectionVariables.set('saga_id', body.id); }",
-                  "const d = body.resultado && body.resultado.despesa;",
-                  "if (d && d.id) { pm.collectionVariables.set('despesa_id', d.id); }",
-                  "pm.test('Saga concluida', function () { pm.expect(body.status).to.eql('CONCLUIDA'); });"
+                  "",
+                  "// O despesa.id vem do passo REGISTRAR_DESPESA, nao de body.resultado:",
+                  "// com 3 passos, 'resultado' e a resposta do ULTIMO passo (VINCULAR).",
+                  "const passo = (body.passos || []).find(p => p.nome === 'REGISTRAR_DESPESA');",
+                  "const despesa = passo && passo.detalhe && passo.detalhe.despesa;",
+                  "if (despesa && despesa.id) {",
+                  "    pm.collectionVariables.set('despesa_id', despesa.id);",
+                  "}",
+                  "",
+                  "pm.test('Saga concluida', function () {",
+                  "    pm.expect(body.status).to.eql('CONCLUIDA');",
+                  "});",
+                  "",
+                  "pm.test('Os 3 passos rodaram', function () {",
+                  "    const nomes = (body.passos || []).map(p => p.nome);",
+                  "    pm.expect(nomes).to.eql(['VALIDAR_GRUPO', 'REGISTRAR_DESPESA', 'VINCULAR_DESPESA_GRUPO']);",
+                  "});"
                 ]
               }
             }
@@ -534,7 +611,7 @@
               "mode": "raw",
               "raw": "{\n  \"descricao\": \"Hotel\",\n  \"valor\": 300,\n  \"moeda\": \"BRL\",\n  \"categoria\": \"hospedagem\",\n  \"viagemId\": 1,\n  \"gruId\": {{gru_id}}\n}"
             },
-            "description": "AQUI SEU SERVICO E TESTADO VIA RABBITMQ, nao via HTTP.\n\nO que acontece:\n1. Orquestrador publica na fila 'cmd_validar_grupo'.\n2. O consumer do service-grupos (src/consumer/saga.consumer.js) le a mensagem.\n3. Ele chama sagaService.validarGrupo(), que confere se o grupo existe e tem participantes nao isentos.\n4. Responde na fila 'resposta_validar_grupo' com status SUCESSO e evento GRUPO_VALIDADO.\n5. So entao o orquestrador segue para o passo REGISTRAR_DESPESA.\n\nResposta esperada: status CONCLUIDA, com o passo VALIDAR_GRUPO em SUCESSO.\n\nOBS: esse passo so roda se voce mandar 'gruId'. Sem gruId, a despesa e pessoal e pula o service-grupos.\n\nPara ver do seu lado, rode no terminal:\ndocker logs -f trabalho-devops-1-service-grupos-1"
+            "description": "O CORACAO DO TRABALHO: uma transacao distribuida em 3 passos.\n\n  1. VALIDAR_GRUPO          -> service-grupos    (le)\n  2. REGISTRAR_DESPESA      -> service-despesas  (grava)\n  3. VINCULAR_DESPESA_GRUPO -> service-grupos    (grava)\n\nOs passos 1 e 3 so rodam porque o body tem gruId. Despesa pessoal pula\no service-grupos.\n\nDUAS ESCRITAS EM BANCOS DIFERENTES: e isso que exige compensacao, porque\nnao existe transacao de banco entre bancos distintos.\n\nO passo 3 precisa do des_id gerado no passo 2 - o orquestrador encadeia o\nresultado de um passo no payload do seguinte.\n\nDepois desta requisicao, o rateio ja esta gravado no service-grupos, sem\nnenhum passo manual. Confira na pasta de Vinculos.\n\nAcompanhe ao vivo:  docker compose logs -f service-grupos\nEsperado no log:    GRUPO_VALIDADO  e  DESPESA_VINCULADA_AO_GRUPO"
           }
         },
         {
@@ -716,17 +793,40 @@
       "name": "6. Despesa-Participante (vinculos)",
       "item": [
         {
-          "name": "Criar vinculo com PESO",
+          "name": "Listar vinculos de uma despesa",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{url_grupos}}/despesa-participante/despesa/{{despesa_id}}",
+              "host": [
+                "{{url_grupos}}"
+              ],
+              "path": [
+                "despesa-participante",
+                "despesa",
+                "{{despesa_id}}"
+              ]
+            },
+            "description": "A PROVA de que a saga gravou o rateio sozinha.\n\nEsperado: uma linha por participante NAO isento do grupo, com dp_peso 1.\nO participante isento nao aparece.\n\nNada disso foi criado a mao - veio do passo 3 da saga."
+          }
+        },
+        {
+          "name": "Marcar despesa como EXCLUSIVA de um participante",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const body = pm.response.json();",
-                  "if (body.payload && body.payload.dp_id) {",
-                  "    pm.collectionVariables.set('dp_id', body.payload.dp_id);",
-                  "}"
+                  "pm.test('Vinculo exclusivo criado', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('1');",
+                  "});"
                 ]
               }
             }
@@ -754,37 +854,13 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"des_id\": \"{{despesa_id}}\",\n  \"par_id\": {{par_id}},\n  \"dp_exclusiva\": false,\n  \"dp_peso\": 2\n}"
+              "raw": "{\n  \"des_id\": \"{{despesa_id}}\",\n  \"par_id\": {{par_id_isento}},\n  \"dp_exclusiva\": true,\n  \"dp_peso\": 1\n}"
             },
-            "description": "Liga uma despesa (que vive no service-despesas) a um participante daqui.\n\n- dp_peso: quem tem peso 2 paga o dobro de quem tem peso 1.\n- dp_exclusiva: true = SO os participantes exclusivos entram na divisao dessa despesa, o resto do grupo fica de fora.\n\nO par (des_id, par_id) e unico: criar o mesmo vinculo 2x da erro.\n\nOBS: o des_id e o UUID que o service-despesas gera para a despesa - nao e um numero nosso. O service-grupos NAO valida se essa despesa existe de verdade no outro servico (limitacao conhecida, ver README do servico)."
-          }
-        },
-        {
-          "name": "Listar vinculos de uma despesa",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{url_grupos}}/despesa-participante/despesa/{{despesa_id}}",
-              "host": [
-                "{{url_grupos}}"
-              ],
-              "path": [
-                "despesa-participante",
-                "despesa",
-                "{{despesa_id}}"
-              ]
-            },
-            "description": "Mostra todos os participantes vinculados aquela despesa, com peso e flag de exclusividade."
+            "description": "REQUISITO 3: atrelar um participante especifico a uma despesa para\ntorna-la exclusiva dele.\n\nUsa o participante ISENTO de proposito, por dois motivos:\n\n1. A saga ja vinculou todos os NAO isentos (passo 3). Vincular um deles\n   de novo daria erro: o par des_id + par_id e unico.\n2. Demonstra a precedencia das regras: exclusividade vence isencao.\n\nRode 'Calcular divisao' ANTES e DEPOIS desta requisicao:\n  antes  -> rateio igual entre os nao isentos\n  depois -> so o exclusivo paga, o valor inteiro\n\nA ordem das regras esta em src/service/divisao.service.js."
           }
         }
       ],
-      "description": "Liga participantes do grupo a uma despesa, com peso ou exclusividade.\n\nUsa {{despesa_id}} - a despesa REAL criada pela saga na pasta anterior.\nRode a saga antes.\n\nEste passo e manual hoje. O comando cmd_vincular_despesa_grupo esta\nimplementado e testado neste servico, mas nao foi incluido na lista de\npassos do orquestrador - ver README.md do servico."
+      "description": "Os vinculos sao criados AUTOMATICAMENTE pela saga (passo 3).\n\nA primeira requisicao mostra o que a saga gravou. A segunda permite\najustar peso manualmente, e e opcional."
     },
     {
       "name": "7. Divisao (o calculo principal)",
@@ -827,7 +903,7 @@
     },
     {
       "name": "8. Compensacao (SAGA)",
-      "description": "O encerramento do fluxo: desfaz a despesa registrada.\n\norquestrador publica em cmd_cancelar_despesa\n  -> service-despesas estorna a despesa\n  -> responde em resposta_cancelar_despesa\n\nO service-grupos NAO participa: ele so leu na saga de registro,\nentao nao tem o que desfazer. Passo de leitura nao precisa de\ncompensacao.",
+      "description": "O encerramento do fluxo: desfaz a despesa nos dois servicos que gravaram.\n\nE aqui que o padrao SAGA se justifica - sem transacao de banco entre\nbancos diferentes, desfazer precisa ser explicito.",
       "item": [
         {
           "name": "Cancelar despesa (COMPENSACAO)",
@@ -851,7 +927,7 @@
                 "cancelar"
               ]
             },
-            "description": "COMPENSACAO da saga: desfaz uma despesa ja registrada.\n\nUse o id da saga de registro que deu certo ({{saga_id}}, salvo sozinho).\n\nO que acontece:\n  orquestrador publica em cmd_cancelar_despesa\n  -> service-despesas estorna a despesa\n  -> responde em resposta_cancelar_despesa\n\nO service-grupos NAO participa: ele so leu na saga de registro, entao nao tem o que desfazer. Passo de leitura nao precisa de compensacao.",
+            "description": "COMPENSACAO: desfaz a despesa registrada, nos DOIS servicos.\n\n  1. CANCELAR_DESPESA          -> service-despesas estorna a despesa\n  2. DESVINCULAR_DESPESA_GRUPO -> service-grupos apaga o rateio\n\nO segundo passo so acontece se a despesa original tinha gruId: a\nCancelarDespesaSaga recupera o payload da saga original para descobrir.\n\nDepois desta requisicao, rode 'Listar vinculos' de novo: a lista volta\nvazia. O estado foi desfeito nos dois bancos.\n\nA compensacao e IDEMPOTENTE: rodar duas vezes responde SUCESSO com\nvinculosRemovidos 0, em vez de erro. O RabbitMQ pode entregar a mesma\nmensagem mais de uma vez.\n\nLog esperado: DESPESA_DESVINCULADA_DO_GRUPO",
             "body": {
               "mode": "raw",
               "raw": ""
