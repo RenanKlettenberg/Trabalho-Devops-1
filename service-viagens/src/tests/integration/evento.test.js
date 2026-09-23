@@ -3,7 +3,7 @@ import api from "../../shared/utils/api.request.js";
 
 let criadoEveId;
 const USU_ID_TESTE = 1;
-const VIA_ID_TESTE = 100;
+const VIA_ID_TESTE = 1;
 
 describe("Criar evento", () => {
     it("deve retornar 200 - SUCESSO", async () => {

@@ -3,8 +3,9 @@ import jwt from 'jsonwebtoken';
 import createApp from '../../../../src/infrastructure/app.js';
 import Despesa from '../../../../src/domain/entities/Despesa.js';
 import criarFakeDespesaRepository from '../../../setup/fakeDespesaRepository.js';
+import jwtConfig from '../../../../src/infrastructure/config/jwt.js';
 
-const token = jwt.sign({ usu_id: 1 }, process.env.SECRET_JWT);
+const token = jwt.sign({ usu_id: 1 }, jwtConfig.secret);
 const auth = { Authorization: `Bearer ${token}` };
 
 describe('rotas /api/dashboard', () => {

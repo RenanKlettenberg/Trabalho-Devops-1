@@ -1,5 +1,4 @@
 import { describe, it, expect, vi } from "vitest";
-import { CATEGORIA_EVENTO } from "../../shared/constants/evento.constants.js";
 import criarServiceEvento from "../../service/evento.service.js";
 import RESPONSE from "../../shared/constants/response.js";
 
@@ -39,11 +38,11 @@ describe("Evento Service", () => {
             const service = criarServiceEvento(repository, despesaClient);
 
             const resultado = await service.listar({
-                via_id: 100
+                via_id: 1
             });
 
             expect(repository.listar).toHaveBeenCalledWith({
-                via_id: 100
+                via_id: 1
             });
 
             expect(resultado).toEqual(eventos);
@@ -79,7 +78,7 @@ describe("Evento Service", () => {
             const { repository, despesaClient } = criarMocks();
 
             repository.getViagemById.mockResolvedValue({
-                via_id: 100
+                via_id: 1
             });
 
             repository.getUltimaOrdemByViagem.mockResolvedValue(5);
@@ -89,7 +88,7 @@ describe("Evento Service", () => {
                 eve_nome: "Check-in",
                 eve_categoria: 2,
                 eve_orcamento: 0,
-                via_id: 100
+                via_id: 1
             });
 
             const service = criarServiceEvento(repository, despesaClient);
@@ -98,7 +97,7 @@ describe("Evento Service", () => {
                 eve_nome: "Check-in",
                 eve_categoria: 2,
                 eve_orcamento: 0,
-                via_id: 100
+                via_id: 1
             };
 
             const resultado = await service.criarEvento(dados);
@@ -117,7 +116,7 @@ describe("Evento Service", () => {
             const { repository, despesaClient } = criarMocks();
 
             repository.getViagemById.mockResolvedValue({
-                via_id: 100
+                via_id: 1
             });
 
             repository.getUltimaOrdemByViagem.mockResolvedValue(2);
@@ -127,7 +126,7 @@ describe("Evento Service", () => {
                 eve_descricao: "Hotel",
                 eve_categoria: 2,
                 eve_orcamento: 500,
-                via_id: 100
+                via_id: 1
             });
 
             despesaClient.criarDespesa.mockResolvedValue({
@@ -137,17 +136,17 @@ describe("Evento Service", () => {
             const service = criarServiceEvento(repository, despesaClient);
 
             const resultado = await service.criarEvento({
-                via_id: 100,
+                via_id: 1,
                 eve_categoria: 2,
                 eve_orcamento: 500
             });
 
             expect(despesaClient.criarDespesa).toHaveBeenCalledWith({
                 descricao: "Hotel",
-                categoria: CATEGORIA_EVENTO[2],
+                categoria: "HOSPEDAGEM",
                 valor: 500,
                 eventoId: 30,
-                viagemId: 100,
+                viagemId: 1,
             });
 
             expect(resultado.eve_id).toBe(30);
@@ -157,7 +156,7 @@ describe("Evento Service", () => {
             const { repository, despesaClient } = criarMocks();
 
             repository.getViagemById.mockResolvedValue({
-                via_id: 100
+                via_id: 1
             });
 
             repository.getUltimaOrdemByViagem.mockResolvedValue(2);
@@ -167,7 +166,7 @@ describe("Evento Service", () => {
                 eve_descricao: "Hotel",
                 eve_categoria: 2,
                 eve_orcamento: 500,
-                via_id: 100
+                via_id: 1
             });
 
             despesaClient.criarDespesa.mockRejectedValue(
@@ -177,7 +176,7 @@ describe("Evento Service", () => {
             const service = criarServiceEvento(repository, despesaClient);
 
             await service.criarEvento({
-                via_id: 100,
+                via_id: 1,
                 eve_categoria: 2,
                 eve_orcamento: 500
             });

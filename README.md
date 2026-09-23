@@ -26,6 +26,6 @@ Passo a passo:
 | Contribuidor | Microserviço | Padrão |
 | :--- | :--- | :---: |
 | Renan Guilherme Klettenberg | service-usuario, service-viagens | - |
-| Júlia Pavanello | service-despesas | API Gateway |
-| Hiago Christian Rocha Kloth | service-grupos | SAGA |
+| Júlia Pavanello | service-grupos | API Gateway |
+| Hiago Christian Rocha Kloth | service-despesas| SAGA |
 
