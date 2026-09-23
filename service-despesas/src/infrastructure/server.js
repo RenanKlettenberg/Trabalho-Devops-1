@@ -13,6 +13,7 @@ import CompensarDespesaCommand from '../application/use-cases/commands/Compensar
 
 import DespesaConsumer from './adapters/in/messaging/consumers/DespesaConsumer.js';
 import CompensarDespesasCommandHandler from './adapters/in/messaging/consumers/CompensarDespesasCommandHandler.js';
+import ViagemEventoConsumer from './adapters/in/messaging/consumers/ViagemEventoConsumer.js';
 
 const PORT = process.env.PORT || 3003;
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672';
@@ -33,6 +34,7 @@ async function start() {
 
   await new DespesaConsumer(canalRabbit, registrarDespesaCommand).iniciar();
   await new CompensarDespesasCommandHandler(canalRabbit, compensarDespesaCommand).iniciar();
+  await new ViagemEventoConsumer(canalRabbit, registrarDespesaCommand).iniciar();
 
   app.listen(PORT, () => {
     console.log(`🚀 service-despesas rodando na porta ${PORT}`);

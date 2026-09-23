@@ -2,6 +2,12 @@ import AppError from "../infrastructure/errors/app.error.js";
 import RESPONSE from "../shared/constants/response.js";
 import { CATEGORIA_EVENTO, STATUS_EVENTO } from "../shared/constants/evento.constants.js";
 
+// CATEGORIA_EVENTO mapeia nome -> número (ex: TRANSPORTE: 1); aqui invertemos
+// para número -> nome, que é o que a despesa espera receber.
+const CATEGORIA_EVENTO_NOME = Object.fromEntries(
+    Object.entries(CATEGORIA_EVENTO).map(([nome, valor]) => [valor, nome])
+);
+
 function criarServiceEvento(repository, despesaClient) {
     async function listar(filtros = {}) {
         return await repository.listar(filtros);
@@ -30,7 +36,7 @@ function criarServiceEvento(repository, despesaClient) {
             try {
                 const despesa = await despesaClient.criarDespesa({
                     descricao: evento.eve_descricao,
-                    categoria: CATEGORIA_EVENTO[evento.eve_categoria],
+                    categoria: CATEGORIA_EVENTO_NOME[evento.eve_categoria],
                     valor: evento.eve_orcamento,
                     eventoId: evento.eve_id,
                     viagemId: evento.via_id,

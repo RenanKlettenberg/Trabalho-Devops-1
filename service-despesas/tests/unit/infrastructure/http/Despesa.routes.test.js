@@ -71,6 +71,18 @@ describe('rotas /api/despesas', () => {
     expect(res.body.codigo).toBe('VALOR_INVALIDO');
   });
 
+  it('retorna 400 ao registrar despesa sem viagemId', async () => {
+    const { app } = criarApp();
+    const res = await request(app).post('/api/despesas').set(auth).send({
+      valor: 10,
+      moeda: 'EUR',
+      categoria: 'LAZER',
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.codigo).toBe('VIAGEM_OBRIGATORIA');
+  });
+
   it('estorna uma despesa e bloqueia um segundo estorno', async () => {
     const { app } = criarApp();
     const criada = await request(app).post('/api/despesas').set(auth).send({

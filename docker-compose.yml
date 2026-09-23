@@ -33,6 +33,7 @@ services:
     # outros containers pelo nome de servico na rede do Docker.
     depends_on:
       - db-viagens
+      - rabbitmq
     volumes:
       - ./service-viagens:/usr/src/app # Meu código = Código no container
       - /usr/src/app/node_modules # node_modules do container != meu node_modules
@@ -47,10 +48,11 @@ services:
       - "5437:5432"
     environment:
       POSTGRES_DB: viagens_db
-      POSTGRES_USER: usuario     
+      POSTGRES_USER: usuario
       POSTGRES_PASSWORD_FILE: /run/secrets/DB_PASSWORD
     volumes:
       - db-viagens-data:/var/lib/postgresql/data
+      - ./service-viagens/init.sql:/docker-entrypoint-initdb.d/init.sql
     secrets:
       - DB_PASSWORD
 
@@ -77,6 +79,7 @@ services:
       POSTGRES_PASSWORD_FILE: /run/secrets/DB_PASSWORD
     volumes:
       - db-data:/var/lib/postgresql/data
+      - ./service-usuario/init.sql:/docker-entrypoint-initdb.d/init.sql
     secrets:
       - DB_PASSWORD
 
@@ -105,6 +108,7 @@ services:
       POSTGRES_PASSWORD_FILE: /run/secrets/DB_PASSWORD
     volumes:
       - db-grupos-data:/var/lib/postgresql/data
+      - ./service-grupos/init.sql:/docker-entrypoint-initdb.d/init.sql
     secrets:
       - DB_PASSWORD
 

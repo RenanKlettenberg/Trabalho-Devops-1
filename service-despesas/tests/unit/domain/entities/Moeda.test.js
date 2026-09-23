@@ -18,4 +18,8 @@ describe('Moeda', () => {
     expect(new Moeda('EUR').equals(new Moeda('eur'))).toBe(true);
     expect(new Moeda('EUR').equals(new Moeda('USD'))).toBe(false);
   });
+
+  it('toString retorna o código da moeda', () => {
+    expect(new Moeda('BRL').toString()).toBe('BRL');
+  });
 });

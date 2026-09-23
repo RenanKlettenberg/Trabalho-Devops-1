@@ -22,4 +22,8 @@ describe('Categoria', () => {
     expect(new Categoria('LAZER').equals(new Categoria('lazer'))).toBe(true);
     expect(new Categoria('LAZER').equals(new Categoria('SAUDE'))).toBe(false);
   });
+
+  it('toString retorna o valor da categoria', () => {
+    expect(new Categoria('TRANSPORTE').toString()).toBe('TRANSPORTE');
+  });
 });
