@@ -3,8 +3,8 @@ import api from "../../shared/utils/api.request.js"
 
 describe("Fazer login", () => {
     const valid_data = {
-        "usu_email": "test_user@teste.com",
-        "usu_password": "senha_test123!"
+        "usu_email": "julia@teste.com",
+        "usu_password": "Senha@123"
     }
 
     it("deve retonar 200 - SUCESSO", async () => {

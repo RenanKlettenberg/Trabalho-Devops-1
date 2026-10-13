@@ -67,7 +67,7 @@ describe("Editar usuário", () => {
     it("deve retornar 200 - SUCESSO", async () => {
         const data = { usu_nome: "Usuário fixture (editado)" }
 
-        const res = await api.put('3000', 'usuario/100', data);
+        const res = await api.put('3000', 'usuario/1', data);
 
         expect(res.status).toBe(200)
     })
@@ -75,7 +75,7 @@ describe("Editar usuário", () => {
     it("deve retornar 200 - SUCESSO ao alterar plano para 'premium'", async () => {
         const data = { usu_plano: 'premium' }
 
-        const res = await api.put('3000', 'usuario/100', data);
+        const res = await api.put('3000', 'usuario/1', data);
 
         expect(res.status).toBe(200)
     })
@@ -87,7 +87,7 @@ describe("Editar usuário", () => {
     })
 
     it("deve retornar 400 - PLANO INVÁLIDO", async () => {
-        const res = await api.put('3000', 'usuario/100', { usu_plano: 'vip' });
+        const res = await api.put('3000', 'usuario/1', { usu_plano: 'vip' });
 
         expect(res.status).toBe(400)
     })
@@ -115,7 +115,7 @@ describe("Deletar usuário", () => {
     })
 
     it("deve retornar 200 - SUCESSO", async () => {
-        const res = await api.delete('3000', 'usuario/100');
+        const res = await api.delete('3000', 'usuario/1');
 
         expect(res.status).toBe(200)
     })

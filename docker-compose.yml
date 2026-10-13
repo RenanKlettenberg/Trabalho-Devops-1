@@ -22,7 +22,6 @@ services:
     secrets:
       - SECRET_JWT
     depends_on:
-
       - service-usuario
       - service-viagens
       - service-grupos
@@ -31,9 +30,6 @@ services:
 
   service-viagens:
     build: ./service-viagens
-    # Porta fechada de proposito: o acesso a este servico e feito pelo
-    # API Gateway (http://localhost:8080). Ele continua alcancavel pelos
-    # outros containers pelo nome de servico na rede do Docker.
     depends_on:
       - db-viagens
       - rabbitmq
