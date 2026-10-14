@@ -1,0 +1,42 @@
+# Nome que aparece na aba Actions do GitHub
+name: service-grupos
+
+# QUANDO a pipeline roda
+on:
+  push:
+    branches: [develop, main, 'feature/**']
+    paths:
+      - 'service-grupos/**'
+      - '.github/workflows/service-grupos.yml'
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'service-grupos/**'
+      - '.github/workflows/service-grupos.yml'
+
+# O QUE a pipeline faz
+jobs:
+  ci:
+    name: Build e testes
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: service-grupos
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: service-grupos/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Rodar testes unitários
+        run: npm test -- src/tests/unit
