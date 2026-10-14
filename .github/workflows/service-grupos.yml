@@ -20,6 +20,31 @@ jobs:
     name: Build e testes
     runs-on: ubuntu-latest
 
+    # Banco temporário só para os testes (é apagado no fim da pipeline)
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: grupos_db
+          POSTGRES_USER: usuario
+          POSTGRES_PASSWORD: senha_teste
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # Variáveis que o service-grupos lê (mesmas do .env)
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: grupos_db
+      DB_USER: usuario
+      DB_PASSWORD: senha_teste
+      SECRET_JWT: segredo_so_para_teste
+
     defaults:
       run:
         working-directory: service-grupos
@@ -38,5 +63,10 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-      - name: Rodar testes unitários
-        run: npm test -- src/tests/unit
+      - name: Criar tabelas no banco de teste
+        run: psql -h localhost -U usuario -d grupos_db -f init.sql
+        env:
+          PGPASSWORD: senha_teste
+
+      - name: Rodar testes (unitários + integração)
+        run: npm run test:coverage
