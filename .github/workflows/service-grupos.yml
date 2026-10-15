@@ -74,6 +74,7 @@ jobs:
         run: npm run test:coverage
         
       - name: Análise SonarCloud
+        if: github.actor != 'dependabot[bot]'
         uses: SonarSource/sonarqube-scan-action@v5
         with:
           projectBaseDir: service-grupos
@@ -87,12 +88,22 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
       - name: Baixar o código
         uses: actions/checkout@v4
+
+      - name: Ler versão do package.json
+        id: versao
+        run: |
+          VERSAO=$(node -p "require('./service-grupos/package.json').version")
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "tag=$VERSAO" >> $GITHUB_OUTPUT
+          else
+            echo "tag=$VERSAO-dev" >> $GITHUB_OUTPUT
+          fi
 
       - name: Login no GitHub Container Registry
         uses: docker/login-action@v3
@@ -109,3 +120,25 @@ jobs:
           tags: |
             ghcr.io/renanklettenberg/service-grupos:${{ github.ref_name }}
             ghcr.io/renanklettenberg/service-grupos:${{ github.sha }}
+            ghcr.io/renanklettenberg/service-grupos:${{ steps.versao.outputs.tag }}
+
+      - name: Criar tag da versão no Git
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git tag "service-grupos-v${{ steps.versao.outputs.tag }}"
+          git push origin "service-grupos-v${{ steps.versao.outputs.tag }}"
+
+  deploy:
+    name: Deploy no Render
+    needs: docker
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.ref_name == 'main' && 'grupos-homol' || 'grupos-dev' }}
+      url: ${{ github.ref_name == 'main' && 'https://grupos-homol.onrender.com' || 'https://grupos-dev.onrender.com' }}
+
+    steps:
+      - name: Avisar o Render para atualizar
+        run: curl --fail -X POST "$RENDER_HOOK"
+        env:
+          RENDER_HOOK: ${{ github.ref_name == 'main' && secrets.RENDER_HOOK_GRUPOS_HOMOL || secrets.RENDER_HOOK_GRUPOS_DEV }}
