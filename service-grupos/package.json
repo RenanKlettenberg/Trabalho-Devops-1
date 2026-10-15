@@ -7,7 +7,9 @@
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch=false",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch=false --coverage",
-    "start": "nodemon -L src/server.js"
+    "start": "node src/server.js",
+    "dev": "nodemon -L src/server.js"
+
   },
   "keywords": [],
   "author": "",
