@@ -52,6 +52,8 @@ jobs:
     steps:
       - name: Baixar o código
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Instalar Node.js
         uses: actions/setup-node@v4
@@ -70,3 +72,10 @@ jobs:
 
       - name: Rodar testes (unitários + integração)
         run: npm run test:coverage
+        
+      - name: Análise SonarCloud
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          projectBaseDir: service-grupos
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_GRUPOS }}
