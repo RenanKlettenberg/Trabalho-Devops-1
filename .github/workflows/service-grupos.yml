@@ -81,7 +81,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_GRUPOS }}
 
-    docker:
+  docker:
     name: Build e publicação da imagem
     needs: ci
     if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
