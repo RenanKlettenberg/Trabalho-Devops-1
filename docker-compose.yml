@@ -86,7 +86,7 @@ services:
 
   service-grupos:
     build: ./service-grupos
-    # Porta fechada de proposito
+    command: npm run dev
     depends_on:
       db-grupos:
         condition: service_started
