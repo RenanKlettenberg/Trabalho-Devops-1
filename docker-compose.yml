@@ -31,8 +31,10 @@ services:
   service-viagens:
     build: ./service-viagens
     depends_on:
-      - db-viagens
-      - rabbitmq
+      db-viagens:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     volumes:
       - ./service-viagens:/usr/src/app # Meu código = Código no container
       - /usr/src/app/node_modules # node_modules do container != meu node_modules
@@ -84,10 +86,12 @@ services:
 
   service-grupos:
     build: ./service-grupos
-    # Porta fechada de proposito
+    command: npm run dev
     depends_on:
-      - db-grupos
-      - rabbitmq
+      db-grupos:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     volumes:
       - ./service-grupos:/usr/src/app # Meu código = Código no container
       - /usr/src/app/node_modules # node_modules do container != meu node_modules
@@ -115,9 +119,12 @@ services:
     build: ./service-despesas
     # Porta fechada de proposito
     depends_on:
-      - db-despesas
-      - rabbitmq
-      - redis
+      db-despesas:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
     volumes:
       - ./service-despesas:/usr/src/app # Meu código = Código no container
       - /usr/src/app/node_modules # node_modules do container != meu node_modules
@@ -192,11 +199,21 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+      # Sem isto, o Erlang tenta criar o .erlang.cookie sozinho dentro de
+      # /var/lib/rabbitmq e falha com "eacces" em parte das inicializacoes -
+      # o diretorio vem gravavel por todos (drwxrwxrwt) e ele recusa. Com a
+      # variavel, o entrypoint da imagem grava o arquivo com as permissoes
+      # certas antes de subir o broker.
+      RABBITMQ_ERLANG_COOKIE: tripmanager-cookie-local
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      # `ping` so confirma que o processo Erlang respondeu - a porta 5672 pode
+      # ainda nao estar aceitando conexao. `check_port_connectivity` testa os
+      # listeners de verdade, que e o que os servicos precisam.
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
       interval: 5s
-      timeout: 5s
-      retries: 10
+      timeout: 10s
+      retries: 12
+      start_period: 20s
 
   redis:
     image: redis:7-alpine
