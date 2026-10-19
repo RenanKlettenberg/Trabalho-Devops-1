@@ -1,3 +1,23 @@
+# Dependências locais
 node_modules
-npm-debug.log
+
+# Variáveis de ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Controle de versão
 .git
+.gitignore
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+*.log
+
+# Cobertura de testes
+coverage
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
