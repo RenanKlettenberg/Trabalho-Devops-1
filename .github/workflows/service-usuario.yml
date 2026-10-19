@@ -43,30 +43,21 @@ jobs:
           cache: npm
           cache-dependency-path: service-usuario/package-lock.json
 
-      - name: Instalar dependências
+      - name: Install dependencies
         run: npm ci
+        working-directory: service-usuario
 
-      # O package.json atual não possui test:coverage. Neste momento, executamos
-      # os testes unitários; os de integração exigem banco, API iniciada e seed.
-      - name: Rodar testes unitários
-        run: npx vitest run src/tests/unit
+      - name: Rodar testes com cobertura
+        run: npm run test:coverage -- --run src/tests/unit
+        working-directory: service-usuario
 
       - name: Análise SonarCloud
-        if: ${{ github.actor != 'dependabot[bot]' && env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_PROJECT_KEY != '' }}
+        if: github.actor != 'dependabot[bot]'
         uses: SonarSource/sonarqube-scan-action@v5
         with:
           projectBaseDir: service-usuario
-          args: >
-            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
-            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY_USUARIO }}
-            -Dsonar.sources=src
-            -Dsonar.tests=src/tests
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_USUARIO }}
-
-      - name: Avisar que o SonarCloud não está configurado
-        if: ${{ github.actor != 'dependabot[bot]' && (env.SONAR_TOKEN == '' || env.SONAR_ORGANIZATION == '' || env.SONAR_PROJECT_KEY == '') }}
-        run: echo "::warning::Configure SONAR_TOKEN_USUARIO, SONAR_ORGANIZATION e SONAR_PROJECT_KEY_USUARIO no GitHub para habilitar o SonarCloud."
 
   docker:
     name: Build e publicação da imagem
