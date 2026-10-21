@@ -59,6 +59,7 @@ services:
 
   service-usuario:
     build: ./service-usuario
+    command: npm run dev
     # Porta fechada de proposito
     depends_on:
       - db-usuario

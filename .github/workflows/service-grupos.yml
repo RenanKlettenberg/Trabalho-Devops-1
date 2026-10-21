@@ -98,7 +98,7 @@ jobs:
       - name: Ler versão do package.json
         id: versao
         run: |
-          VERSAO=$(node -p "require('./service-grupos/package.json').version")
+          VERSAO=$(node -p "require('./service-usuario/package.json').version")
           if [ "${{ github.ref_name }}" = "main" ]; then
             echo "tag=$VERSAO" >> $GITHUB_OUTPUT
           else
@@ -115,18 +115,18 @@ jobs:
       - name: Build e push da imagem
         uses: docker/build-push-action@v6
         with:
-          context: service-grupos
+          context: service-usuario
           push: true
           tags: |
-            ghcr.io/renanklettenberg/service-grupos:${{ github.ref_name }}
-            ghcr.io/renanklettenberg/service-grupos:${{ github.sha }}
-            ghcr.io/renanklettenberg/service-grupos:${{ steps.versao.outputs.tag }}
+            ghcr.io/renanklettenberg/service-usuario:${{ github.ref_name }}
+            ghcr.io/renanklettenberg/service-usuario:${{ github.sha }}
+            ghcr.io/renanklettenberg/service-usuario:${{ steps.versao.outputs.tag }}
 
       - name: Criar tag da versão no Git
         if: github.ref == 'refs/heads/main'
         run: |
-          git tag "service-grupos-v${{ steps.versao.outputs.tag }}"
-          git push origin "service-grupos-v${{ steps.versao.outputs.tag }}"
+          git tag "service-usuario-v${{ steps.versao.outputs.tag }}"
+          git push origin "service-usuario-v${{ steps.versao.outputs.tag }}"
 
   deploy:
     name: Deploy no Render
