@@ -128,17 +128,17 @@ jobs:
           git tag "service-usuario-v${{ steps.versao.outputs.tag }}"
           git push origin "service-usuario-v${{ steps.versao.outputs.tag }}"
 
-  # deploy:
-  #   name: Deploy no Render
-  #   needs: docker
-  #   runs-on: ubuntu-latest
+  deploy:
+    name: Deploy no Render
+    needs: docker
+    runs-on: ubuntu-latest
 
-  #   environment:
-  #     name: ${{ github.ref_name == 'main' && 'grupos-homol' || 'grupos-dev' }}
-  #     url: ${{ github.ref_name == 'main' && 'https://grupos-homol.onrender.com' || 'https://grupos-dev.onrender.com' }}
+    environment:
+      name: ${{ github.ref_name == 'main' && 'grupos-homol' || 'grupos-dev' }}
+      url: ${{ github.ref_name == 'main' && 'https://grupos-homol.onrender.com' || 'https://grupos-dev.onrender.com' }}
 
-  #   steps:
-  #     - name: Avisar o Render para atualizar
-  #       run: curl --fail -X POST "$RENDER_HOOK"
-  #       env:
-  #         RENDER_HOOK: ${{ github.ref_name == 'main' && secrets.RENDER_HOOK_GRUPOS_HOMOL || secrets.RENDER_HOOK_GRUPOS_DEV }}
+    steps:
+      - name: Avisar o Render para atualizar
+        run: curl --fail -X POST "$RENDER_HOOK"
+        env:
+          RENDER_HOOK: ${{ github.ref_name == 'main' && secrets.RENDER_HOOK_GRUPOS_HOMOL || secrets.RENDER_HOOK_GRUPOS_DEV }}
