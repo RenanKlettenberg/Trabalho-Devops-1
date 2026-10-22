@@ -118,6 +118,7 @@ services:
 
   service-despesas:
     build: ./service-despesas
+    command: npm run dev
     # Porta fechada de proposito
     depends_on:
       db-despesas:
