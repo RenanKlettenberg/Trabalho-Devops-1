@@ -6,3 +6,9 @@ scrape_configs:
   - job_name: prometheus
     static_configs:
       - targets: ["localhost:9090"]
+
+  - job_name: usuario-dev
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["usuario-dev.onrender.com"]
+    scheme: https
