@@ -1,0 +1,112 @@
+# Nome que aparece na aba Actions do GitHub
+name: service-despesas
+
+# QUANDO a pipeline roda (só quando algo do service-despesas muda)
+on:
+  push:
+    branches: [develop, main, 'feature/**']
+    paths:
+      - 'service-despesas/**'
+      - '.github/workflows/service-despesas.yml'
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'service-despesas/**'
+      - '.github/workflows/service-despesas.yml'
+
+# O QUE a pipeline faz
+jobs:
+  ci:
+    name: Build e testes
+    runs-on: ubuntu-latest
+
+    # Variáveis que o service-despesas lê (mesmas do .env)
+    env:
+      SECRET_JWT: segredo_so_para_teste
+
+    defaults:
+      run:
+        working-directory: service-despesas
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: service-despesas/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Rodar testes
+        run: npm test
+
+  docker:
+    name: Build e publicação da imagem
+    needs: ci
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Ler versão do package.json
+        id: versao
+        run: |
+          VERSAO=$(node -p "require('./service-despesas/package.json').version")
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "tag=$VERSAO" >> $GITHUB_OUTPUT
+          else
+            echo "tag=$VERSAO-dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Login no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build e push da imagem
+        uses: docker/build-push-action@v6
+        with:
+          context: service-despesas
+          push: true
+          tags: |
+            ghcr.io/renanklettenberg/service-despesas:${{ github.ref_name }}
+            ghcr.io/renanklettenberg/service-despesas:${{ github.sha }}
+            ghcr.io/renanklettenberg/service-despesas:${{ steps.versao.outputs.tag }}
+
+      - name: Criar tag da versão no Git
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git tag "service-despesas-v${{ steps.versao.outputs.tag }}"
+          git push origin "service-despesas-v${{ steps.versao.outputs.tag }}"
+
+  deploy:
+    name: Deploy no Render
+    needs: docker
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.ref_name == 'main' && 'despesas-homol' || 'despesas-dev' }}
+
+    steps:
+      - name: Avisar o Render para atualizar
+        run: |
+          if [ -z "$RENDER_HOOK" ]; then
+            echo "::warning::Secret do deploy hook do Render não configurado, pulando deploy."
+            exit 0
+          fi
+          curl --fail -X POST "$RENDER_HOOK"
+        env:
+          RENDER_HOOK: ${{ github.ref_name == 'main' && secrets.RENDER_HOOK_DESPESAS_HOMOL || secrets.RENDER_HOOK_DESPESAS_DEV }}
