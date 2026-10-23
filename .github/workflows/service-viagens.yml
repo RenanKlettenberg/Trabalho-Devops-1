@@ -57,7 +57,7 @@ jobs:
         with:
           projectBaseDir: service-viagens
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_USUARIO }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_USUARIOS }}
 
   docker:
     name: Build e publicação da imagem
