@@ -30,6 +30,7 @@ services:
 
   service-viagens:
     build: ./service-viagens
+    command: npm run dev
     depends_on:
       db-viagens:
         condition: service_started
