@@ -1,0 +1,135 @@
+# Pipeline do microsserviço de usuário
+name: service-viagens
+
+on:
+  push:
+    branches: [develop, main, 'feature/**']
+    paths:
+      - 'service-viagens/**'
+      - '.github/workflows/service-viagens.yml'
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'service-viagens/**'
+      - '.github/workflows/service-viagens.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Build, testes e SonarCloud
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: service-viagens
+    env:
+      # Segredo descartável usado somente nos testes automatizados.
+      SECRET_JWT: segredo_so_para_teste
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_USUARIO }}
+      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY_USUARIO }}
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: service-viagens/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: service-viagens
+
+      - name: Rodar testes com cobertura
+        run: npm run test:coverage -- --run src/tests/unit
+        working-directory: service-viagens
+
+      - name: Análise SonarCloud
+        if: github.actor != 'dependabot[bot]'
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          projectBaseDir: service-viagens
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_USUARIO }}
+
+  docker:
+    name: Build e publicação da imagem
+    needs: ci
+    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Ler versão do package.json
+        id: versao
+        run: |
+          VERSAO=$(node -p "require('./service-viagens/package.json').version")
+          echo "version=$VERSAO" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "tag=$VERSAO" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=$VERSAO-dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Login no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build e publicação da imagem
+        uses: docker/build-push-action@v6
+        with:
+          context: ./service-viagens
+          push: true
+          tags: |
+            ghcr.io/renanklettenberg/service-viagens:${{ github.ref_name }}
+            ghcr.io/renanklettenberg/service-viagens:${{ github.sha }}
+            ghcr.io/renanklettenberg/service-viagens:${{ steps.versao.outputs.tag }}
+
+      - name: Criar tag da versão no Git
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          git tag "service-viagens-v${{ steps.versao.outputs.version }}"
+          git push origin "service-viagens-v${{ steps.versao.outputs.version }}"
+
+  deploy:
+    name: Deploy no Render
+    needs: docker
+    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy em DEV
+        if: ${{ github.ref == 'refs/heads/develop' }}
+        env:
+          RENDER_HOOK: ${{ secrets.RENDER_HOOK_VIAGENS_DEV }}
+        run: |
+          if [ -z "$RENDER_HOOK" ]; then
+            echo "::error::Configure o secret RENDER_HOOK_VIAGENS_DEV com o deploy hook do Render."
+            exit 1
+          fi
+          curl --fail --silent --show-error --request POST "$RENDER_HOOK"
+
+      - name: Deploy em HOMOL
+        if: ${{ github.ref == 'refs/heads/main' }}
+        env:
+          RENDER_HOOK: ${{ secrets.RENDER_HOOK_VIAGENS_HOMOL }}
+        run: |
+          if [ -z "$RENDER_HOOK" ]; then
+            echo "::error::Configure o secret RENDER_HOOK_VIAGENS_HOMOL com o deploy hook do Render."
+            exit 1
+          fi
+          curl --fail --silent --show-error --request POST "$RENDER_HOOK"
