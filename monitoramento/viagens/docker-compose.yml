@@ -1,0 +1,23 @@
+services:
+  prometheus-viagens:
+    image: prom/prometheus
+    container_name: prometheus-viagens
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_viagens_data:/prometheus
+
+  grafana-viagens:
+    image: grafana/grafana
+    container_name: grafana-viagens
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_viagens_data:/var/lib/grafana
+    depends_on:
+      - prometheus-viagens
+
+volumes:
+  prometheus_viagens_data:
+  grafana_viagens_data:
