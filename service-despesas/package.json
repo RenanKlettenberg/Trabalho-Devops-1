@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch=false",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch=false --coverage",
     "start": "node src/infrastructure/server.js",
     "dev": "nodemon -L src/infrastructure/server.js"
   },
