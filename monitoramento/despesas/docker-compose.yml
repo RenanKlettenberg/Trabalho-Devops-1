@@ -1,0 +1,23 @@
+services:
+  prometheus-despesas:
+    image: prom/prometheus
+    container_name: prometheus-despesas
+    ports:
+      - "9093:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_despesas_data:/prometheus
+
+  grafana-despesas:
+    image: grafana/grafana
+    container_name: grafana-despesas
+    ports:
+      - "3003:3000"
+    volumes:
+      - grafana_despesas_data:/var/lib/grafana
+    depends_on:
+      - prometheus-despesas
+
+volumes:
+  prometheus_despesas_data:
+  grafana_despesas_data:
