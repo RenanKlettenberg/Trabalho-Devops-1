@@ -1,0 +1,78 @@
+# Dependabot do grupo: um bloco por serviço (npm e imagem base do Dockerfile)
+# e um para as actions das pipelines. Os PRs vão para a develop, seguindo o
+# Git Flow; atualizações minor/patch vêm agrupadas num PR só por serviço.
+version: 2
+
+updates:
+  # ------------------------------------------------------------------ npm
+  - package-ecosystem: npm
+    directory: /service-usuario
+    target-branch: develop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-e-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /service-viagens
+    target-branch: develop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-e-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /service-grupos
+    target-branch: develop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-e-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /service-despesas
+    target-branch: develop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-e-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /service-orquestrador
+    target-branch: develop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-e-patch:
+        update-types: [minor, patch]
+
+  # ----------------------------------------------- imagens base (Dockerfile)
+  - package-ecosystem: docker
+    directories:
+      - /service-usuario
+      - /service-viagens
+      - /service-grupos
+      - /service-despesas
+      - /service-orquestrador
+    target-branch: develop
+    schedule:
+      interval: weekly
+
+  # ------------------------------------------------- actions das pipelines
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']

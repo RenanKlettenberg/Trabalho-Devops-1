@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import promBundle from 'express-prom-bundle';
+import swaggerUi from 'swagger-ui-express';
+import openapi from './docs/openapi.js';
 import errorMiddleware from './adapters/in/http/middlewares/error.middleware.js';
 
 import RegistrarDespesaCommand from '../application/use-cases/commands/RegistrarDespesa/RegistrarDespesaCommand.js';
@@ -55,6 +57,10 @@ function createApp({ despesaRepository, exchangeRateProvider }) {
   app.use('/api/dashboard', dashboardRoutes(dashboardController));
 
   app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
+
+  // Documentação da API (Swagger UI) e a especificação OpenAPI em JSON
+  app.get('/api-docs.json', (req, res) => res.status(200).json(openapi));
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapi));
 
   // Middleware de tratamento de erros (deve ser sempre o último 'use')
   app.use(errorMiddleware);
