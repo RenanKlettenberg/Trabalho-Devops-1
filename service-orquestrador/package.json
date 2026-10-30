@@ -12,15 +12,15 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "amqplib": "^2.0.1",
+    "amqplib": "^2.2.0",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "pg": "^8.22.0"
+    "express": "^5.3.0",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "jest": "^30.5.0",
     "nodemon": "^3.1.14",
-    "supertest": "^7.2.2"
+    "supertest": "^7.3.1"
   },
   "directories": {
     "test": "tests"
