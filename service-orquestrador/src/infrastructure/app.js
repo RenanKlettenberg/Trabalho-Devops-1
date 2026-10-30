@@ -19,6 +19,8 @@ function createApp({ rpcClient, sagaRepository }) {
 
   app.use('/api/sagas', sagaRoutes(registrarDespesaSaga, cancelarDespesaSaga, sagaRepository));
 
+  app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
+
   // Middleware de tratamento de erros (deve ser sempre o último 'use')
   app.use(errorMiddleware);
 
