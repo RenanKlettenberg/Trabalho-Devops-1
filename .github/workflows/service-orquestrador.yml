@@ -1,0 +1,137 @@
+# Nome que aparece na aba Actions do GitHub
+name: service-orquestrador
+
+# QUANDO a pipeline roda (só quando algo do service-orquestrador muda)
+on:
+  push:
+    branches: [develop, main, 'feature/**']
+    paths:
+      - 'service-orquestrador/**'
+      - '.github/workflows/service-orquestrador.yml'
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'service-orquestrador/**'
+      - '.github/workflows/service-orquestrador.yml'
+
+# O QUE a pipeline faz
+jobs:
+  ci:
+    name: Build e testes
+    runs-on: ubuntu-latest
+
+    # Banco temporário só para os testes (é apagado no fim da pipeline)
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: orquestrador_db
+          POSTGRES_USER: usuario
+          POSTGRES_PASSWORD: senha_teste
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # Variáveis que o service-orquestrador lê (mesmas do .env)
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: orquestrador_db
+      DB_USER: usuario
+      DB_PASSWORD: senha_teste
+
+    defaults:
+      run:
+        working-directory: service-orquestrador
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: service-orquestrador/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Criar tabelas no banco de teste
+        run: psql -h localhost -U usuario -d orquestrador_db -f init.sql
+        env:
+          PGPASSWORD: senha_teste
+
+      - name: Rodar testes (unitários + integração + e2e)
+        run: npm run test:coverage
+
+  docker:
+    name: Build e publicação da imagem
+    needs: ci
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Ler versão do package.json
+        id: versao
+        run: |
+          VERSAO=$(node -p "require('./service-orquestrador/package.json').version")
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "tag=$VERSAO" >> $GITHUB_OUTPUT
+          else
+            echo "tag=$VERSAO-dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Login no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build e push da imagem
+        uses: docker/build-push-action@v6
+        with:
+          context: service-orquestrador
+          push: true
+          tags: |
+            ghcr.io/renanklettenberg/service-orquestrador:${{ github.ref_name }}
+            ghcr.io/renanklettenberg/service-orquestrador:${{ github.sha }}
+            ghcr.io/renanklettenberg/service-orquestrador:${{ steps.versao.outputs.tag }}
+
+      - name: Criar tag da versão no Git
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git tag "service-orquestrador-v${{ steps.versao.outputs.tag }}"
+          git push origin "service-orquestrador-v${{ steps.versao.outputs.tag }}"
+
+  deploy:
+    name: Deploy no Render
+    needs: docker
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.ref_name == 'main' && 'orquestrador-homol' || 'orquestrador-dev' }}
+
+    steps:
+      - name: Avisar o Render para atualizar
+        run: |
+          if [ -z "$RENDER_HOOK" ]; then
+            echo "::warning::Secret do deploy hook do Render não configurado, pulando deploy."
+            exit 0
+          fi
+          curl --fail -X POST "$RENDER_HOOK"
+        env:
+          RENDER_HOOK: ${{ github.ref_name == 'main' && secrets.RENDER_HOOK_ORQUESTRADOR_HOMOL || secrets.RENDER_HOOK_ORQUESTRADOR_DEV }}

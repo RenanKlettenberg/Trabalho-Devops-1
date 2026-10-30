@@ -155,6 +155,7 @@ services:
 
   service-orquestrador:
     build: ./service-orquestrador
+    command: npm run dev
     # Porta fechada de proposito
     depends_on:
       db-orquestrador:
