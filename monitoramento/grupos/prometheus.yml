@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+
+# Prometheus roda localmente e coleta as métricas dos serviços publicados no Render.
+# Enquanto estiver rodando, os serviços não "dormem" (consome horas do plano grátis).
+scrape_configs:
+  - job_name: grupos-dev
+    metrics_path: /metrics
+    scheme: https
+    static_configs:
+      - targets: ["grupos-dev.onrender.com"]
+
+  - job_name: grupos-homol
+    metrics_path: /metrics
+    scheme: https
+    static_configs:
+      - targets: ["grupos-homol.onrender.com"]
