@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import promBundle from 'express-prom-bundle';
 import swaggerUi from 'swagger-ui-express';
 import routes from './routes.js';
 import openapi from './docs/openapi.js';
@@ -7,6 +8,14 @@ import openapi from './docs/openapi.js';
 import errorMiddleware from './infrastructure/middlewares/error.middleware.js';
 
 const app = express();
+
+// Métricas do Prometheus em GET /metrics: requisições (por método, rota e status),
+// tempo de resposta e métricas padrão do Node (memória, CPU, event loop).
+app.use(promBundle({
+    includeMethod: true,
+    includePath: true,
+    promClient: { collectDefaultMetrics: {} },
+}));
 
 app.use(cors());
 app.use(express.json());
