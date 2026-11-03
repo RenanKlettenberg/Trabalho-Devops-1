@@ -95,10 +95,23 @@ jobs:
 
     environment:
       name: ${{ github.ref_name == 'main' && 'gateway-homol' || 'gateway-dev' }}
-      url: ${{ github.ref_name == 'main' && 'https://gateway-homol.onrender.com' || 'https://gateway-dev.onrender.com' }}
+      url: ${{ github.ref_name == 'main' && 'https://gateway-homol.onrender.com' || 'https://gateway-dev-etun.onrender.com' }}
 
     steps:
+      # Cada ambiente tem o seu hook. Se o da branch estiver faltando, a pipeline
+      # falha aqui (em vez de cair no hook do outro ambiente sem ninguém perceber).
       - name: Avisar o Render para atualizar
-        run: curl --fail -X POST "$RENDER_HOOK"
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            RENDER_HOOK="$HOOK_HOMOL"
+          else
+            RENDER_HOOK="$HOOK_DEV"
+          fi
+          if [ -z "$RENDER_HOOK" ]; then
+            echo "::error::Secret do deploy hook nao configurado para a branch ${{ github.ref_name }}"
+            exit 1
+          fi
+          curl --fail -X POST "$RENDER_HOOK"
         env:
-          RENDER_HOOK: ${{ github.ref_name == 'main' && secrets.RENDER_HOOK_GATEWAY_HOMOL || secrets.RENDER_HOOK_GATEWAY_DEV }}
+          HOOK_DEV: ${{ secrets.RENDER_HOOK_GATEWAY_DEV }}
+          HOOK_HOMOL: ${{ secrets.RENDER_HOOK_GATEWAY_HOMOL }}
