@@ -9,14 +9,22 @@ secrets:
 services:
   # Porta única de entrada do sistema (padrão API Gateway). — ver api-gateway/nginx.conf.
   api-gateway:
-    image: nginx:alpine
+    build: ./api-gateway
     container_name: api-gateway
     restart: unless-stopped
     ports:
       - "8080:80"
+    # Endereço de cada serviço. No Render, as mesmas variáveis apontam para as URLs da nuvem.
+    environment:
+      USUARIO_URL: http://service-usuario:3000
+      VIAGENS_URL: http://service-viagens:3001
+      GRUPOS_URL: http://service-grupos:3002
+      DESPESAS_URL: http://service-despesas:3003
+      ORQUESTRADOR_URL: http://service-orquestrador:3004
+    # Montados por cima da imagem para editar sem rebuild (basta reiniciar o container)
     volumes:
       - ./api-gateway/nginx-main.conf:/etc/nginx/nginx.conf:ro
-      - ./api-gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./api-gateway/nginx.conf:/etc/nginx/templates/default.conf.template:ro
       # Validador de JWT em njs
       - ./api-gateway/auth.js:/etc/nginx/njs/auth.js:ro
     secrets:

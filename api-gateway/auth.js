@@ -22,12 +22,22 @@ function ehPublica(metodo, caminho) {
 
 let segredoEmCache = null;
 
+// Local (docker-compose): lê o Docker secret em /run/secrets.
+// Render: não existe esse arquivo, então usa a variável de ambiente SECRET_JWT
+// (liberada para o njs pela diretiva "env SECRET_JWT;" em nginx-main.conf).
 function segredo() {
     if (segredoEmCache === null) {
-        segredoEmCache = require('fs')
-            .readFileSync(ARQUIVO_SEGREDO)
-            .toString()
-            .trim();
+        try {
+            segredoEmCache = require('fs')
+                .readFileSync(ARQUIVO_SEGREDO)
+                .toString()
+                .trim();
+        } catch (erro) {
+            segredoEmCache = process.env.SECRET_JWT || null;
+        }
+    }
+    if (!segredoEmCache) {
+        throw new Error('SECRET_JWT nao configurado (nem em ' + ARQUIVO_SEGREDO + ' nem na variavel de ambiente)');
     }
     return segredoEmCache;
 }
