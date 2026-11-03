@@ -1,0 +1,104 @@
+# Nome que aparece na aba Actions do GitHub
+name: api-gateway
+
+# QUANDO a pipeline roda
+on:
+  push:
+    branches: [develop, main, 'feature/**']
+    paths:
+      - 'api-gateway/**'
+      - '.github/workflows/api-gateway.yml'
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'api-gateway/**'
+      - '.github/workflows/api-gateway.yml'
+
+# O QUE a pipeline faz
+jobs:
+  ci:
+    name: Build e validação do nginx
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Build da imagem (sem publicar)
+        run: docker build -t api-gateway-teste api-gateway
+
+      # O gateway não tem código de aplicação para testar: o "teste" é o
+      # próprio nginx conferir se a configuração é válida (nginx -t).
+      # As URLs aqui são de mentira, só para preencher o template.
+      - name: Validar configuração do nginx
+        run: |
+          docker run --rm \
+            -e USUARIO_URL=https://usuario.example.com \
+            -e VIAGENS_URL=https://viagens.example.com \
+            -e GRUPOS_URL=https://grupos.example.com \
+            -e DESPESAS_URL=https://despesas.example.com \
+            -e ORQUESTRADOR_URL=https://orquestrador.example.com \
+            api-gateway-teste nginx -t
+
+  docker:
+    name: Build e publicação da imagem
+    needs: ci
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      # O gateway não tem package.json: a versão fica no arquivo api-gateway/VERSION
+      - name: Ler versão do arquivo VERSION
+        id: versao
+        run: |
+          VERSAO=$(tr -d '[:space:]' < api-gateway/VERSION)
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "tag=$VERSAO" >> $GITHUB_OUTPUT
+          else
+            echo "tag=$VERSAO-dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Login no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build e push da imagem
+        uses: docker/build-push-action@v6
+        with:
+          context: api-gateway
+          push: true
+          tags: |
+            ghcr.io/renanklettenberg/api-gateway:${{ github.ref_name }}
+            ghcr.io/renanklettenberg/api-gateway:${{ github.sha }}
+            ghcr.io/renanklettenberg/api-gateway:${{ steps.versao.outputs.tag }}
+
+      - name: Criar tag da versão no Git
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git tag "api-gateway-v${{ steps.versao.outputs.tag }}"
+          git push origin "api-gateway-v${{ steps.versao.outputs.tag }}"
+
+  deploy:
+    name: Deploy no Render
+    needs: docker
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.ref_name == 'main' && 'gateway-homol' || 'gateway-dev' }}
+      url: ${{ github.ref_name == 'main' && 'https://gateway-homol.onrender.com' || 'https://gateway-dev.onrender.com' }}
+
+    steps:
+      - name: Avisar o Render para atualizar
+        run: curl --fail -X POST "$RENDER_HOOK"
+        env:
+          RENDER_HOOK: ${{ github.ref_name == 'main' && secrets.RENDER_HOOK_GATEWAY_HOMOL || secrets.RENDER_HOOK_GATEWAY_DEV }}
