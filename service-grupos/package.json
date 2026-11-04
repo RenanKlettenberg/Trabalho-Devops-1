@@ -1,6 +1,6 @@
 {
   "name": "service-grupos",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Serviço de Grupos e Divisão de Custos - TripManager",
   "main": "src/server.js",
   "type": "module",

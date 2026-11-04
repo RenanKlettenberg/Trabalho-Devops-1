@@ -67,6 +67,14 @@ const openapi = {
                 responses: { 200: { description: 'Serviço no ar' } },
             },
         },
+        '/version': {
+            get: {
+                tags: ['Health'],
+                summary: 'Mostra a versão do serviço que está no ar',
+                security: [],
+                responses: { 200: { description: 'Versão e commit do serviço' } },
+            },
+        },
         '/grupo': {
             get: {
                 tags: ['Grupos'],

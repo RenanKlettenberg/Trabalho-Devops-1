@@ -89,6 +89,9 @@ jobs:
         with:
           context: api-gateway
           push: true
+          build-args: |
+            APP_VERSION=${{ steps.versao.outputs.tag }}
+            APP_COMMIT=${{ github.sha }}
           tags: |
             ghcr.io/renanklettenberg/api-gateway:${{ github.ref_name }}
             ghcr.io/renanklettenberg/api-gateway:${{ github.sha }}
