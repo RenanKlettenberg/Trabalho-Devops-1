@@ -1,0 +1,570 @@
+{
+  "info": {
+    "name": "TripManager - Testes (Julia)",
+    "_postman_id": "0dd43fa2-f52f-4565-8e65-fe279dbefcff",
+    "description": "Testes pelo API Gateway. Escolha o ambiente (TripManager DEV ou HOMOL) no canto superior direito e rode as pastas em ordem: o login guarda o token, criar grupo guarda o gruId e a saga guarda o desId automaticamente.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "0 - Saúde e versão",
+      "item": [
+        {
+          "name": "Gateway - health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Gateway - versão",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/version",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "version"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "console.log(pm.response.json());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Grupos - health (pelo gateway)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Grupos - versão (pelo gateway)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/version",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "grupos",
+                "version"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 - Usuário",
+      "item": [
+        {
+          "name": "Cadastrar usuário",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuario",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuario"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usu_nome\": \"Julia Teste\",\n  \"usu_email\": \"{{email}}\",\n  \"usu_password\": \"{{senha}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Se o e-mail já existir, troque a variável email no ambiente ou pule direto para o login."
+          }
+        },
+        {
+          "name": "Login (guarda o token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "session"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usu_email\": \"{{email}}\",\n  \"usu_password\": \"{{senha}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const jwt = pm.response.json().payload && pm.response.json().payload.jwt;",
+                  "pm.test(\"Recebeu o token\", () => pm.expect(jwt).to.be.a(\"string\"));",
+                  "if (jwt) pm.environment.set(\"token\", jwt);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 - Grupos",
+      "item": [
+        {
+          "name": "Criar grupo (guarda o gruId)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/grupo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "grupo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gru_nome\": \"Viagem Floripa\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json().payload;",
+                  "const grupo = Array.isArray(p) ? p[0] : p;",
+                  "if (grupo && grupo.gru_id) pm.environment.set(\"gruId\", grupo.gru_id);",
+                  "pm.test(\"Guardou o gruId\", () => pm.expect(pm.environment.get(\"gruId\")).to.exist);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar meus grupos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/grupo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "grupo"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Adicionar participante Ana",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/participante",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "participante"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gru_id\": {{gruId}},\n  \"par_nome\": \"Ana\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Adicionar participante Bruno",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/participante",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "participante"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gru_id\": {{gruId}},\n  \"par_nome\": \"Bruno\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar participantes do grupo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/participante/grupo/{{gruId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "participante",
+                "grupo",
+                "{{gruId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 - Saga (RabbitMQ)",
+      "description": "orquestrador -> fila cmd_validar_grupo -> grupos -> fila cmd_registrar_despesa -> despesas -> fila cmd_vincular_despesa_grupo -> grupos",
+      "item": [
+        {
+          "name": "Saga com grupo inexistente (espera 422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sagas/despesas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sagas",
+                "despesas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"Teste grupo inexistente\",\n  \"valor\": 100,\n  \"moeda\": \"BRL\",\n  \"categoria\": \"ALIMENTACAO\",\n  \"viagemId\": \"1\",\n  \"gruId\": 999999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "O 422 é o resultado esperado: o grupos recebeu a pergunta pela fila e respondeu que o grupo não existe."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422\", () => pm.response.to.have.status(422));",
+                  "const passo = (pm.response.json().passos || [])[0] || {};",
+                  "pm.test(\"Grupos respondeu pela fila (não foi erro de comunicação)\", () => pm.expect(passo.status).to.not.equal(\"ERRO\"));",
+                  "console.log(pm.response.json());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Saga: despesa dividida no grupo (guarda o desId)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sagas/despesas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sagas",
+                "despesas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"Jantar\",\n  \"valor\": 100,\n  \"moeda\": \"BRL\",\n  \"categoria\": \"ALIMENTACAO\",\n  \"viagemId\": \"1\",\n  \"gruId\": {{gruId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const saga = pm.response.json();",
+                  "pm.test(\"Saga concluída\", () => pm.expect(saga.status).to.equal(\"CONCLUIDA\"));",
+                  "const reg = (saga.passos || []).find(p => p.nome === \"REGISTRAR_DESPESA\");",
+                  "const id = reg && reg.detalhe && reg.detalhe.despesa && reg.detalhe.despesa.id;",
+                  "if (id) pm.environment.set(\"desId\", id);",
+                  "pm.test(\"Guardou o desId\", () => pm.expect(id).to.exist);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ver a divisão no grupos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/despesa-participante/despesa/{{desId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "despesa-participante",
+                "despesa",
+                "{{desId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
