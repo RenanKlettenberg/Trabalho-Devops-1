@@ -1,4 +1,3 @@
-# Nome que aparece na aba Actions do GitHub
 name: service-grupos
 
 # QUANDO a pipeline roda
@@ -20,7 +19,7 @@ jobs:
     name: Build e testes
     runs-on: ubuntu-latest
 
-    # Banco temporário só para os testes (é apagado no fim da pipeline)
+    # banco temporário só para os testes (é apagado no fim da pipeline)
     services:
       postgres:
         image: postgres:15
