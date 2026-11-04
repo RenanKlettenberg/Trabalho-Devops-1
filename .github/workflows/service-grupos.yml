@@ -117,6 +117,9 @@ jobs:
         with:
           context: service-grupos
           push: true
+          build-args: |
+            APP_VERSION=${{ steps.versao.outputs.tag }}
+            APP_COMMIT=${{ github.sha }}
           tags: |
             ghcr.io/renanklettenberg/service-grupos:${{ github.ref_name }}
             ghcr.io/renanklettenberg/service-grupos:${{ github.sha }}
