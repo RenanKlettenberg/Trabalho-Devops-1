@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Baixar o código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build da imagem (sem publicar)
         run: docker build -t api-gateway-teste api-gateway
@@ -52,7 +52,7 @@ jobs:
 
     steps:
       - name: Baixar o código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # O gateway não tem package.json: a versão fica no arquivo api-gateway/VERSION
       - name: Ler versão do arquivo VERSION
@@ -78,14 +78,14 @@ jobs:
           fi
 
       - name: Login no GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build e push da imagem
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: api-gateway
           push: true
