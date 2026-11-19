@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-usuario
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db-usuario
+  template:
+    metadata:
+      labels:
+        app: db-usuario
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          ports:
+            - containerPort: 5432
