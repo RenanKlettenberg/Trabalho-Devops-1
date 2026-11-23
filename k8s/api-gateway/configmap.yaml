@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-config
+# O nginx resolve DNS por conta própria e ignora o "search" do cluster:
+# por isso o nome completo (service.namespace.svc.cluster.local).
+data:
+  USUARIO_URL: "http://service-usuario.default.svc.cluster.local:3000"
+  VIAGENS_URL: "http://service-viagens.default.svc.cluster.local:3001"
+  GRUPOS_URL: "http://service-grupos.default.svc.cluster.local:3002"
+  DESPESAS_URL: "http://service-despesas.default.svc.cluster.local:3003"
+  ORQUESTRADOR_URL: "http://service-orquestrador.default.svc.cluster.local:3004"
