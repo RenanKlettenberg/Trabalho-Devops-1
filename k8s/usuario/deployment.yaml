@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-usuario
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: service-usuario
+  template:
+    metadata:
+      labels:
+        app: service-usuario
+    spec:
+      containers:
+        - name: service-usuario
+          image: ghcr.io/renanklettenberg/service-usuario:1.1.0
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: service-usuario-config
+            - secretRef:
+                name: service-usuario-secret

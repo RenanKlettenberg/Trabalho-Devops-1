@@ -12,8 +12,30 @@ spec:
       labels:
         app: db-usuario
     spec:
-      containers:
+      containers:      
         - name: postgres
           image: postgres:15
           ports:
             - containerPort: 5432
+          volumeMounts:
+            - name: db-storage
+              mountPath: /var/lib/postgresql/data
+            - name: db-init
+              mountPath: /docker-entrypoint-initdb.d
+          env:
+            - name: POSTGRES_USER
+              value: usuario
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-usuario-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              value: banco
+      volumes:
+        - name: db-storage
+          persistentVolumeClaim:
+            claimName: db-usuario-pvc
+        - name: db-init
+          configMap:
+            name: db-usuario-init
