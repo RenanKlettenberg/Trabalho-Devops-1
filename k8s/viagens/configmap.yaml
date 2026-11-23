@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-viagens-config
+data:
+  PORT_BACK: "3001"
+  DB_HOST: "db-viagens"
+  DB_PORT: "5432"
+  DB_NAME: "banco"
+  DB_USER: "usuario"
+  NODE_ENV: "development"
