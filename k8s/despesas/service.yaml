@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-despesas
+spec:
+  selector:
+    app: service-despesas
+  ports:
+    - port: 3003
+      targetPort: 3003

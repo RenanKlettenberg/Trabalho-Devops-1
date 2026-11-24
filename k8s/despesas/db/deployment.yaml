@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-despesas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db-despesas
+  template:
+    metadata:
+      labels:
+        app: db-despesas
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: db-storage
+              mountPath: /var/lib/postgresql/data
+            - name: db-init
+              mountPath: /docker-entrypoint-initdb.d
+          env:
+            - name: POSTGRES_USER
+              value: usuario
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-despesas-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              value: despesas_db
+      volumes:
+        - name: db-storage
+          persistentVolumeClaim:
+            claimName: db-despesas-pvc
+        - name: db-init
+          configMap:
+            name: db-despesas-init

@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-despesas
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: service-despesas
+  template:
+    metadata:
+      labels:
+        app: service-despesas
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3003"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: service-despesas
+          image: ghcr.io/renanklettenberg/service-despesas:1.1.0
+          ports:
+            - containerPort: 3003
+          envFrom:
+            - configMapRef:
+                name: service-despesas-config
+            - secretRef:
+                name: service-despesas-secret
