@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+
+    scrape_configs:
+      # Descobre sozinho os pods dos microsserviços (label app=service-*) e
+      # coleta o /metrics de cada réplica. Serviço novo entra sem mexer aqui.
+      - job_name: microsservicos
+        metrics_path: /metrics
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [default]
+        relabel_configs:
+          # só pods cujo label "app" começa com "service-"
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            regex: service-.*
+            action: keep
+          # ignora bancos e outras portas: só a porta do container da aplicação
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            regex: service-.*
+            action: keep
+          # o nome do serviço vira o label "job" (usado pelo dashboard)
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: job
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
